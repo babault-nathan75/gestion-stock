@@ -5,12 +5,20 @@ import { getSupabase } from "@/lib/supabase"
 import { useWarehouse } from "@/lib/warehouse-context"
 import type { Product, StockExit } from "@/lib/types"
 import { ProductCombobox } from "../components/ProductCombobox"
-import { BottomSheet } from "../components/BottomSheet"
+import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
+} from "@/components/ui/dialog"
 import {
   Select,
   SelectContent,
@@ -18,10 +26,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Plus, ArrowUpFromLine, Trash2, Package, MapPin, CalendarDays, User } from "lucide-react"
+import { Plus, ArrowUpFromLine, Trash2 } from "lucide-react"
 import { format } from "date-fns"
 import { fr } from "date-fns/locale"
 import { toast } from "sonner"
+
 import { StockLoader } from "../components/StockLoader"
 
 interface FormLine {
@@ -181,231 +190,215 @@ export default function SortiesPage() {
   }
 
   return (
-    <div className="space-y-3 p-4 animate-fade-in">
-      <div className="flex items-start justify-between">
-        <div className="space-y-1">
-          <h1 className="text-2xl font-bold">Sorties de stock</h1>
-          <p className="text-sm text-muted-foreground">
-            {exits.length} sortie{exits.length !== 1 ? "s" : ""}
-            {ctxWarehouse !== "all" ? ` · ${ctxWarehouse}` : ""}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Badge variant="secondary" className="bg-destructive/10 text-destructive">
-            -{exits.length}
-          </Badge>
-        </div>
+    <div className="space-y-4 p-4 animate-fade-in">
+      <div className="space-y-1">
+        <h1 className="text-2xl font-bold">Sorties de stock</h1>
+        <p className="text-sm text-muted-foreground">
+          {exits.length} produit{exits.length !== 1 ? "s" : ""} expédié{exits.length !== 1 ? "s" : ""}
+          {ctxWarehouse !== "all" ? ` · ${ctxWarehouse}` : ""}
+        </p>
       </div>
 
       {grouped.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 text-center">
-          <div className="w-20 h-20 rounded-full bg-destructive/10 flex items-center justify-center mb-4">
-            <ArrowUpFromLine className="h-10 w-10 text-destructive/60" />
-          </div>
-          <p className="text-lg font-semibold">Aucune sortie</p>
-          <p className="text-sm text-muted-foreground mt-1">Appuyez sur + pour expédier des produits</p>
+        <div className="flex flex-col items-center justify-center py-12 text-center">
+          <ArrowUpFromLine className="mb-3 h-12 w-12 text-muted-foreground/50" />
+          <p className="text-muted-foreground">Aucune sortie enregistrée</p>
         </div>
       ) : (
         <div className="space-y-3">
-          {grouped.map((group) => {
-            const totalQty = group.lines.reduce((s, l) => s + l.quantity, 0)
-            const totalValue = group.lines.reduce((s, l) => s + l.quantity * l.unit_price, 0)
-            return (
-              <div key={group.batch_id} className="bg-neutral-900 border border-neutral-800 rounded-2xl overflow-hidden">
-                <div className="px-4 pt-4 pb-3">
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-destructive/10 flex items-center justify-center shrink-0">
-                        <ArrowUpFromLine className="h-5 w-5 text-destructive" />
-                      </div>
-                      <div>
-                        <p className="font-semibold text-sm text-white">{group.destination}</p>
-                        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                          <span className="text-xs text-neutral-400 flex items-center gap-1">
-                            <User className="h-3 w-3" />{group.recipient}
-                          </span>
-                          <span className="text-xs text-neutral-400 flex items-center gap-1">
-                            <MapPin className="h-3 w-3" />{group.warehouse}
-                          </span>
-                          <span className="text-xs text-neutral-400 flex items-center gap-1">
-                            <CalendarDays className="h-3 w-3" />{format(new Date(group.date), "dd MMM", { locale: fr })}
-                          </span>
-                        </div>
-                      </div>
+          {grouped.map((group) => (
+            <Card key={group.batch_id}>
+              <CardContent className="p-3 space-y-2">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-warning/10">
+                      <ArrowUpFromLine className="h-5 w-5 text-warning" />
                     </div>
-                    <Badge className="bg-destructive/10 text-destructive border-0">{totalQty} unités</Badge>
-                  </div>
-
-                  <div className="space-y-1.5 ml-[52px]">
-                    {group.lines.map((line) => (
-                      <div key={line.id} className="flex items-center justify-between text-sm py-1.5 border-t border-neutral-800/50 first:border-0">
-                        <span className="text-neutral-300 truncate mr-2">{(line.products as any)?.name || "Produit supprimé"}</span>
-                        <div className="flex items-center gap-2 shrink-0">
-                          {line.unit_price > 0 && <span className="text-xs text-neutral-500">{line.unit_price.toLocaleString("fr-FR")} Fcfa</span>}
-                          <span className="font-bold text-destructive text-sm">-{line.quantity}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  {group.notes && (
-                    <p className="ml-[52px] text-xs text-neutral-500 italic mt-2">{group.notes}</p>
-                  )}
-
-                  {totalValue > 0 && (
-                    <div className="ml-[52px] mt-2 pt-2 border-t border-neutral-800/50">
-                      <span className="text-xs text-neutral-500">Total : </span>
-                      <span className="text-xs font-semibold text-yellow-400">{totalValue.toLocaleString("fr-FR")} Fcfa</span>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Destination: {group.destination}</p>
+                      <p className="text-xs text-muted-foreground">Réceptionnaire: {group.recipient}</p>
+                      <p className="text-xs text-muted-foreground">{group.warehouse} · {format(new Date(group.date), "dd MMMM yyyy", { locale: fr })}</p>
                     </div>
-                  )}
+                  </div>
+                  <Badge variant="secondary" className="bg-destructive/10 text-destructive shrink-0">
+                    {group.lines.length} produit{group.lines.length > 1 ? "s" : ""}
+                  </Badge>
                 </div>
-              </div>
-            )
-          })}
+                <div className="ml-13 space-y-1">
+                  {group.lines.map((line) => (
+                    <div key={line.id} className="flex items-center justify-between text-sm">
+                      <span>{(line.products as any)?.name || "Produit supprimé"}</span>
+                      <div className="flex items-center gap-2">
+                        {line.unit_price > 0 && <span className="text-xs text-muted-foreground">{line.unit_price.toLocaleString("fr-FR")} Fcfa</span>}
+                        <span className="font-medium text-destructive">-{line.quantity}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {group.notes && <p className="ml-13 text-xs text-muted-foreground italic">{group.notes}</p>}
+              </CardContent>
+            </Card>
+          ))}
         </div>
       )}
 
-      <Button
-        size="lg"
-        className="fixed bottom-20 right-4 h-14 w-14 rounded-full shadow-lg z-40 bg-yellow-400 text-black hover:bg-yellow-300"
-        onClick={() => setFormOpen(true)}
-      >
+      <Button size="lg" className="fixed bottom-20 right-4 h-14 w-14 rounded-full shadow-lg z-40" onClick={() => setFormOpen(true)}>
         <Plus className="h-6 w-6" />
       </Button>
 
-      <BottomSheet open={formOpen} onClose={handleClose} title="Nouvelle sortie" description="Expédier des produits">
-        <form onSubmit={handleSubmit} className="space-y-5">
-          <div className="space-y-3">
-            <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Informations</Label>
-            <div className="grid grid-cols-2 gap-3">
+      <Dialog open={formOpen} onOpenChange={handleClose}>
+        {/* Correction apportée ici : overflow-y-visible pour laisser le menu déroulant du combobox flotter proprement par-dessus */}
+        <DialogContent className="w-[calc(100vw-2rem)] max-w-md max-h-[90vh] overflow-y-visible overflow-x-hidden p-4 sm:p-6 rounded-lg">
+          <DialogHeader>
+            <DialogTitle>Nouvelle sortie</DialogTitle>
+            <DialogDescription>Expédier un ou plusieurs produits</DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleSubmit} className="space-y-4 max-h-[calc(90vh-120px)] overflow-y-auto px-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+            {/* Date et Réceptionnaire */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label htmlFor="exit-date" className="text-sm">Date *</Label>
-                <Input id="exit-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} className="h-11" />
+                <Label htmlFor="exit-date">Date *</Label>
+                <Input id="exit-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-full" />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="recipient" className="text-sm">Réceptionnaire *</Label>
-                <Input id="recipient" value={recipient} onChange={(e) => setRecipient(e.target.value)} placeholder="Nom" className="h-11" />
+                <Label htmlFor="recipient">Réceptionnaire *</Label>
+                <Input id="recipient" value={recipient} onChange={(e) => setRecipient(e.target.value)} placeholder="Nom" className="w-full" />
               </div>
             </div>
+
+            {/* Lieu de destination */}
             <div className="space-y-1.5">
-              <Label htmlFor="destination" className="text-sm">Lieu de destination *</Label>
-              <Input id="destination" value={destination} onChange={(e) => setDestination(e.target.value)} placeholder="Ex: Cocody, Bouaké, Treichville..." className="h-11" />
+              <Label htmlFor="destination">Lieu de destination *</Label>
+              <Input id="destination" value={destination} onChange={(e) => setDestination(e.target.value)} placeholder="Ex: Cocody, Bouaké, Trechville, Sinfra..." className="w-full" />
             </div>
+
+            {/* Entrepôt */}
             <div className="space-y-1.5">
-              <Label className="text-sm">Entrepôt *</Label>
+              <Label>Entrepôt *</Label>
               <Select value={warehouse} onValueChange={(v) => setWarehouse(v ?? "Abidjan")}>
-                <SelectTrigger className="h-11"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="Abidjan">Abidjan</SelectItem>
                   <SelectItem value="Sinfra">Sinfra</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-          </div>
 
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Produits</Label>
-              <Button type="button" variant="outline" size="sm" onClick={addLine} className="h-8 text-xs gap-1 border-neutral-700">
-                <Plus className="h-3.5 w-3.5" /> Ajouter
-              </Button>
-            </div>
-
+            {/* Section Produits */}
             <div className="space-y-3">
-              {lines.map((line, i) => (
-                <div key={line.key} className="p-3.5 rounded-xl border border-neutral-800 bg-neutral-900 space-y-3">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-yellow-400 w-5">{i + 1}</span>
-                    <div className="flex-1 min-w-0">
-                      <ProductCombobox
-                        value={line.product_id}
-                        onValueChange={(id, name) => {
-                          updateLine(line.key, "product_id", id)
-                          if (name) updateLine(line.key, "product_name", name)
-                        }}
-                        products={products}
-                        placeholder="Sélectionner un produit"
-                      />
-                    </div>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => removeLine(line.key)}
-                      disabled={lines.length <= 1}
-                      className="shrink-0 text-neutral-500 hover:text-red-400 hover:bg-red-400/10 h-9 w-9"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
+              <div className="flex items-center justify-between">
+                <Label className="text-base font-semibold">Produits *</Label>
+                <Button type="button" variant="outline" size="sm" onClick={addLine} className="h-8 text-xs gap-1">
+                  <Plus className="h-3.5 w-3.5" /> Ajouter
+                </Button>
+              </div>
 
-                  <div className="grid grid-cols-2 gap-2.5">
-                    <div className="space-y-1">
-                      <span className="text-[11px] text-neutral-500 font-medium">Quantité *</span>
-                      <Input
-                        type="number"
-                        min="1"
-                        max={line.product_id && line.product_id !== "__new__" ? getStock(line.product_id) : undefined}
-                        value={line.quantity}
-                        onChange={(e) => updateLine(line.key, "quantity", e.target.value)}
-                        placeholder="Qté"
-                        className="h-10 bg-neutral-800 border-neutral-700"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <span className="text-[11px] text-neutral-500 font-medium">Prix unitaire</span>
-                      <Input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={line.unit_price}
-                        onChange={(e) => updateLine(line.key, "unit_price", e.target.value)}
-                        placeholder="Fcfa"
-                        className="h-10 bg-neutral-800 border-neutral-700"
-                      />
-                    </div>
-                  </div>
+              <div className="space-y-3">
+                {lines.map((line) => (
+                  <div key={line.key} className="p-3 rounded-lg border bg-card text-card-foreground shadow-sm space-y-2">
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 min-w-0">
+                        {line.product_id === "__new__" ? (
+                          <Input
+                            value={line.product_name}
+                            onChange={(e) => updateLine(line.key, "product_name", e.target.value)}
+                            placeholder="Nom du nouveau produit"
+                            className="w-full border-primary focus-visible:ring-primary h-9"
+                            autoFocus
+                          />
+                        ) : (
+                          <ProductCombobox 
+                            value={line.product_id} 
+                            onValueChange={(id, name) => { 
+                              updateLine(line.key, "product_id", id); 
+                              if (name) updateLine(line.key, "product_name", name);
+                            }} 
+                            products={products} 
+                            placeholder="Sélectionner ou saisir" 
+                          />
+                        )}
+                      </div>
 
-                  {line.product_id && line.product_id !== "__new__" && (
-                    <div className="flex items-center gap-1.5 text-xs text-neutral-500 pt-2 border-t border-neutral-800/50">
-                      <Package className="h-3 w-3" />
-                      <span>Stock disponible :</span>
-                      <span className="font-semibold text-white">{getStock(line.product_id)}</span>
+                      {line.product_id === "__new__" && (
+                        <Button 
+                          type="button" 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => {
+                            updateLine(line.key, "product_id", "")
+                            updateLine(line.key, "product_name", "")
+                          }}
+                          className="shrink-0 h-9 px-2 text-xs"
+                        >
+                          Annuler
+                        </Button>
+                      )}
+
+                      <Button 
+                        type="button" 
+                        variant="ghost" 
+                        size="icon" 
+                        onClick={() => removeLine(line.key)} 
+                        disabled={lines.length <= 1} 
+                        className="shrink-0 text-destructive hover:text-destructive hover:bg-destructive/10 h-9 w-9"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
-                  )}
-                </div>
-              ))}
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                        <span className="text-[11px] text-muted-foreground font-medium">Quantité</span>
+                        <Input 
+                          type="number" 
+                          min="1" 
+                          max={line.product_id && line.product_id !== "__new__" ? getStock(line.product_id) : undefined}
+                          value={line.quantity} 
+                          onChange={(e) => updateLine(line.key, "quantity", e.target.value)} 
+                          placeholder="Qté" 
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <span className="text-[11px] text-muted-foreground font-medium">Prix unitaire</span>
+                        <Input 
+                          type="number" 
+                          min="0" 
+                          step="0.01" 
+                          value={line.unit_price} 
+                          onChange={(e) => updateLine(line.key, "unit_price", e.target.value)} 
+                          placeholder="Prix" 
+                        />
+                      </div>
+                    </div>
+
+                    {line.product_id && line.product_id !== "__new__" && (
+                      <p className="text-xs text-muted-foreground pt-1 border-t border-border/50">
+                        Stock disponible : <span className="font-medium text-foreground">{getStock(line.product_id)}</span>
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
 
-          <div className="space-y-1.5">
-            <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Notes</Label>
-            <Textarea
-              id="notes"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Notes optionnelles"
-              rows={2}
-              className="bg-neutral-900 border-neutral-800"
-            />
-          </div>
+            {/* Notes */}
+            <div className="space-y-1.5">
+              <Label htmlFor="notes">Notes</Label>
+              <Textarea id="notes" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Notes optionnelles" rows={2} />
+            </div>
 
-          <Button
-            type="submit"
-            disabled={submitting}
-            className="w-full h-12 text-base font-semibold bg-yellow-400 text-black hover:bg-yellow-300"
-          >
-            {submitting ? (
-              <span className="flex items-center gap-2">
-                <span className="h-4 w-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
-                Enregistrement...
-              </span>
-            ) : (
-              "Enregistrer la sortie"
-            )}
-          </Button>
-        </form>
-      </BottomSheet>
+            <DialogFooter className="flex-col-reverse sm:flex-row gap-2 pt-2">
+              <Button type="button" variant="outline" onClick={handleClose} className="w-full sm:w-auto">
+                Annuler
+              </Button>
+              <Button type="submit" disabled={submitting} className="w-full sm:w-auto">
+                {submitting ? "Enregistrement..." : "Enregistrer"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

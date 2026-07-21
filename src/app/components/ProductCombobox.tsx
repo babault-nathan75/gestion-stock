@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef, useEffect } from "react"
+import React, { useState, useRef, useEffect } from "react"
 import type { Product } from "@/lib/types"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -28,6 +28,32 @@ export function ProductCombobox({
   const [search, setSearch] = useState("")
   const [newName, setNewName] = useState("")
   const [isCreating, setIsCreating] = useState(false)
+
+  // --- FIX MOBILE SCROLL ---
+  // On garde une trace de la position du doigt pour savoir si l'utilisateur scroll ou clique
+  const scrollRef = useRef({ isScrolling: false, startY: 0 })
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    scrollRef.current.isScrolling = false
+    scrollRef.current.startY = e.touches[0].clientY
+  }
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    // Si le doigt bouge de plus de 10 pixels, on considère que c'est un scroll
+    if (Math.abs(e.touches[0].clientY - scrollRef.current.startY) > 10) {
+      scrollRef.current.isScrolling = true
+    }
+  }
+
+  const handleItemClick = (e: React.MouseEvent, callback: () => void) => {
+    // Si l'utilisateur était en train de scroller, on bloque l'action de clic
+    if (scrollRef.current.isScrolling) {
+      e.preventDefault()
+      return
+    }
+    callback()
+  }
+  // --------------------------
 
   const selectedProduct = products.find((p) => p.id === value)
   const isNewMode = value === "__new__"
@@ -60,7 +86,7 @@ export function ProductCombobox({
       setSheetOpen(false)
       setNewName("")
       setIsCreating(false)
-      setSearch("")
+      search && setSearch("")
     }
   }
 
@@ -166,13 +192,18 @@ export function ProductCombobox({
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto px-2 pb-4" style={{ touchAction: "pan-y" }}>
+            <div 
+              className="flex-1 overflow-y-auto px-2 pb-4" 
+              style={{ touchAction: "pan-y" }}
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+            >
               {filtered.length === 0 && search && (
                 <Button
                   type="button"
                   variant="ghost"
                   className="w-full justify-start gap-2 text-primary text-sm h-12"
-                  onClick={() => startCreate(search)}
+                  onClick={(e) => handleItemClick(e, () => startCreate(search))}
                 >
                   <Plus className="h-4 w-4" />
                   Créer &quot;{search}&quot;
@@ -183,7 +214,7 @@ export function ProductCombobox({
                   type="button"
                   variant="ghost"
                   className="w-full justify-start gap-2 text-muted-foreground text-sm h-12"
-                  onClick={() => startCreate("")}
+                  onClick={(e) => handleItemClick(e, () => startCreate(""))}
                 >
                   <Plus className="h-4 w-4" />
                   Nouveau produit
@@ -198,7 +229,7 @@ export function ProductCombobox({
                     "w-full justify-between text-sm h-auto py-3",
                     value === product.id && "bg-muted"
                   )}
-                  onClick={() => selectProduct(product)}
+                  onClick={(e) => handleItemClick(e, () => selectProduct(product))}
                 >
                   <span className="truncate">{product.name}</span>
                   {showStock && (
@@ -215,7 +246,7 @@ export function ProductCombobox({
                     type="button"
                     variant="ghost"
                     className="w-full justify-start gap-2 text-muted-foreground text-sm h-12"
-                    onClick={() => startCreate("")}
+                    onClick={(e) => handleItemClick(e, () => startCreate(""))}
                   >
                     <Plus className="h-4 w-4" />
                     Nouveau produit

@@ -150,11 +150,11 @@ export default function DashboardPage() {
 
   return (
     <PullToRefresh onRefresh={() => loadData(true)}>
-      <div className="space-y-4 p-4 animate-fade-in bg-zinc-950 text-zinc-100 min-h-screen">
+      <div className="space-y-4 p-4 animate-fade-in min-h-screen">
         <div className="flex items-start justify-between">
           <div className="space-y-1">
             <h1 className="text-2xl font-bold text-white">Tableau de bord</h1>
-            <p className="text-sm text-zinc-400">
+            <p className="text-sm text-neutral-400">
               Vue d&apos;ensemble {warehouse !== "all" ? `· ${warehouse}` : ""}
             </p>
           </div>
@@ -163,52 +163,52 @@ export default function DashboardPage() {
             size="icon-sm"
             onClick={() => loadData(true)}
             disabled={refreshing}
-            className="border-zinc-800 bg-zinc-900 text-yellow-400 hover:bg-zinc-800 hover:text-yellow-300"
+            className="border-neutral-800 bg-black text-yellow-400 hover:bg-neutral-900 hover:text-yellow-300"
           >
             <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
           </Button>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          <Card className="bg-zinc-900/80 border-zinc-800 shadow-sm">
+          <Card className="bg-neutral-900 border-neutral-800 shadow-sm">
             <CardContent className="flex items-center gap-3 p-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-yellow-500/10 border border-yellow-500/20">
                 <Package className="h-5 w-5 text-yellow-400" />
               </div>
               <div>
                 <p className="text-2xl font-bold text-white">{totalProducts}</p>
-                <p className="text-xs text-zinc-400">Produits</p>
+                <p className="text-xs text-neutral-400">Produits</p>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="bg-zinc-900/80 border-zinc-800 shadow-sm">
+          <Card className="bg-neutral-900 border-neutral-800 shadow-sm">
             <CardContent className="flex items-center gap-3 p-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-yellow-400/10 border border-yellow-500/20">
                 <TrendingUp className="h-5 w-5 text-yellow-400" />
               </div>
               <div>
                 <p className="text-2xl font-bold text-white">{totalStock}</p>
-                <p className="text-xs text-zinc-400">En stock</p>
+                <p className="text-xs text-neutral-400">En stock</p>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="col-span-2 bg-zinc-900/80 border-zinc-800 shadow-sm">
+          <Card className="col-span-2 bg-neutral-900 border-neutral-800 shadow-sm">
             <CardContent className="flex items-center gap-3 p-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-yellow-500/10 border border-yellow-500/20">
                 <Coins className="h-5 w-5 text-yellow-400" />
               </div>
               <div>
                 <p className="text-2xl font-bold text-yellow-400">{totalValue.toLocaleString("fr-FR")} Fcfa</p>
-                <p className="text-xs text-zinc-400">Valeur du stock</p>
+                <p className="text-xs text-neutral-400">Valeur du stock</p>
               </div>
             </CardContent>
           </Card>
         </div>
 
         {chartData.some((d) => d.entries > 0 || d.exits > 0) && (
-          <Card className="bg-zinc-900/80 border-zinc-800 shadow-sm">
+          <Card className="bg-neutral-900 border-neutral-800 shadow-sm">
             <CardContent className="p-3 space-y-2">
               <div className="flex items-center gap-2">
                 <BarChart3 className="h-4 w-4 text-yellow-400" />
@@ -227,11 +227,11 @@ export default function DashboardPage() {
                         style={{ height: `${maxChartValue > 0 ? (d.exits / maxChartValue) * 100 : 0}%` }}
                       />
                     </div>
-                    <span className="text-[10px] text-zinc-400">{d.label}</span>
+                    <span className="text-[10px] text-neutral-400">{d.label}</span>
                   </div>
                 ))}
               </div>
-              <div className="flex items-center gap-4 justify-center text-xs text-zinc-400">
+              <div className="flex items-center gap-4 justify-center text-xs text-neutral-400">
                 <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-yellow-400 inline-block" /> Entrées</span>
                 <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-500 inline-block" /> Sorties</span>
               </div>
@@ -240,7 +240,7 @@ export default function DashboardPage() {
         )}
 
         {valueByCategory.length > 0 && (
-          <Card className="bg-zinc-900/80 border-zinc-800 shadow-sm">
+          <Card className="bg-neutral-900 border-neutral-800 shadow-sm">
             <CardContent className="p-3 space-y-2">
               <h2 className="font-semibold text-sm text-white">Valeur par catégorie</h2>
               <div className="space-y-2">
@@ -249,10 +249,10 @@ export default function DashboardPage() {
                   return (
                     <div key={cat} className="space-y-1">
                       <div className="flex items-center justify-between text-sm">
-                        <span className="text-zinc-200">{cat}</span>
+                        <span className="text-white">{cat}</span>
                         <span className="font-medium text-yellow-400">{value.toLocaleString("fr-FR")} Fcfa</span>
                       </div>
-                      <div className="h-2 bg-zinc-800 rounded-full overflow-hidden">
+                      <div className="h-2 bg-neutral-800 rounded-full overflow-hidden">
                         <div
                           className="h-full bg-yellow-400 rounded-full transition-all shadow-[0_0_8px_rgba(250,204,21,0.4)]"
                           style={{ width: `${pct}%` }}
@@ -267,7 +267,7 @@ export default function DashboardPage() {
         )}
 
         {topProducts.length > 0 && (
-          <Card className="bg-zinc-900/80 border-zinc-800 shadow-sm">
+          <Card className="bg-neutral-900 border-neutral-800 shadow-sm">
             <CardContent className="p-3 space-y-2">
               <div className="flex items-center gap-2">
                 <Trophy className="h-4 w-4 text-yellow-400" />
@@ -275,10 +275,10 @@ export default function DashboardPage() {
               </div>
               <div className="space-y-1">
                 {topProducts.map((p, i) => (
-                  <div key={p.id} className="flex items-center justify-between text-sm py-1 border-b border-zinc-800/50 last:border-0">
+                  <div key={p.id} className="flex items-center justify-between text-sm py-1 border-b border-neutral-800/50 last:border-0">
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-bold text-yellow-500 w-4">{i + 1}</span>
-                      <span className="text-zinc-200">{p.name}</span>
+                      <span className="text-white">{p.name}</span>
                     </div>
                     <span className="font-medium text-yellow-400">{(p.quantity * p.price).toLocaleString("fr-FR")} Fcfa</span>
                   </div>
@@ -299,11 +299,11 @@ export default function DashboardPage() {
             </div>
             <div className="space-y-2">
               {lowStockProducts.map((product) => (
-                <Card key={product.id} className="bg-zinc-900/80 border-zinc-800">
+                <Card key={product.id} className="bg-neutral-900 border-neutral-800">
                   <CardContent className="flex items-center justify-between p-3">
                     <div>
                       <p className="font-medium text-white">{product.name}</p>
-                      <p className="text-xs text-zinc-400">
+                      <p className="text-xs text-neutral-400">
                         {product.category || "Sans catégorie"} · Seuil: {product.alert_threshold || 5} · {(product.quantity * product.price).toLocaleString("fr-FR")} Fcfa
                       </p>
                     </div>
@@ -312,7 +312,7 @@ export default function DashboardPage() {
                       className={`text-sm ${
                         product.quantity === 0 
                           ? "bg-red-500/20 text-red-400 border border-red-500/30" 
-                          : "bg-zinc-800 text-yellow-400 border border-yellow-500/20"
+                          : "bg-neutral-800 text-yellow-400 border border-yellow-500/20"
                       }`}
                     >
                       {product.quantity}
@@ -327,7 +327,7 @@ export default function DashboardPage() {
         <div className="space-y-2">
           <h2 className="font-semibold text-white">Mouvements récents</h2>
           {entries.length === 0 && exits.length === 0 ? (
-            <p className="text-sm text-zinc-400 text-center py-4">
+            <p className="text-sm text-neutral-400 text-center py-4">
               Aucun mouvement enregistré
             </p>
           ) : (
@@ -340,7 +340,7 @@ export default function DashboardPage() {
                   const entry = item as StockEntry
                   const exit = item as StockExit
                   return (
-                    <Card key={item.id} className="bg-zinc-900/80 border-zinc-800">
+                    <Card key={item.id} className="bg-neutral-900 border-neutral-800">
                       <CardContent className="flex items-center justify-between p-3">
                         <div className="flex items-center gap-3">
                           <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border ${
@@ -354,7 +354,7 @@ export default function DashboardPage() {
                           </div>
                           <div>
                             <p className="text-sm font-medium text-white">{(item.products as any)?.name || "Produit"}</p>
-                            <p className="text-xs text-zinc-400">
+                            <p className="text-xs text-neutral-400">
                               {isEntry ? `De: ${entry.origin}` : `${exit.destination} · ${exit.recipient}`}
                               {" · "}
                               {item.warehouse && <>{item.warehouse} · </>}

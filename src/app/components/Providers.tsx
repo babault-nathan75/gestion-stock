@@ -1,11 +1,10 @@
 "use client"
 
-import { useEffect } from "react"
 import { WarehouseProvider } from "@/lib/warehouse-context"
-import { ThemeProvider } from "@/lib/theme-context"
 import { Header } from "./Header"
 import { MobileNav } from "./MobileNav"
 import { Toaster } from "sonner"
+import { useEffect } from "react"
 
 export function Providers({ children }: { children: React.ReactNode }) {
   useEffect(() => {
@@ -15,16 +14,14 @@ export function Providers({ children }: { children: React.ReactNode }) {
   }, [])
 
   return (
-    <ThemeProvider>
-      <WarehouseProvider>
-        <main className="mx-auto max-w-lg min-h-screen">
-          <Header />
-          {children}
-          <div className="h-20" />
-        </main>
-        <MobileNav />
-        <Toaster position="top-center" richColors closeButton />
-      </WarehouseProvider>
-    </ThemeProvider>
+    <WarehouseProvider>
+      <main className="mx-auto max-w-lg min-h-screen">
+        <Header />
+        {children}
+        <div className="h-20" />
+      </main>
+      <MobileNav />
+      <Toaster position="top-center" richColors closeButton />
+    </WarehouseProvider>
   )
 }

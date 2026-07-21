@@ -30,7 +30,7 @@ export function AppLoader() {
       }}
     >
       <img src="/Gestock.png" alt="GESTOCK" className="w-40 h-40 object-contain" />
-      <p style={{ marginTop: 12, fontFamily: "system-ui, sans-serif", fontSize: 13, color: "rgba(250,204,21,.6)", textTransform: "uppercase", letterSpacing: 3 }}>
+      <p style={{ marginTop: 12, fontFamily: "system-ui, sans-serif", fontSize: 13, color: "rgba(234,179,8,.7)", textTransform: "uppercase", letterSpacing: 3 }}>
         Chargement
       </p>
     </div>

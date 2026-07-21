@@ -1,0 +1,3 @@
+Supabase gestion-stock :
+mdp : gestockgwladys
+reinitialiser la bdd : TRUNCATE product_stock, stock_entries, stock_exits, products, categories CASCADE;

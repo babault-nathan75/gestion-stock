@@ -1,7 +1,9 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
 import { getSupabase } from "@/lib/supabase"
+import { useIsMobile } from "@/lib/use-is-mobile"
 import type { Category } from "@/lib/types"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -20,6 +22,8 @@ import { toast } from "sonner"
 import { StockLoader } from "../components/StockLoader"
 
 export default function CategoriesPage() {
+  const router = useRouter()
+  const isMobile = useIsMobile()
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
   const [formOpen, setFormOpen] = useState(false)
@@ -47,15 +51,25 @@ export default function CategoriesPage() {
   }
 
   function handleEdit(category: Category) {
-    setEditingCategory(category)
-    setCategoryName(category.name)
-    setFormOpen(true)
+    if (isMobile === null) return
+    if (isMobile) {
+      setEditingCategory(category)
+      setCategoryName(category.name)
+      setFormOpen(true)
+    } else {
+      router.push(`/categories/${category.id}/modifier`)
+    }
   }
 
   function handleAdd() {
-    setEditingCategory(null)
-    setCategoryName("")
-    setFormOpen(true)
+    if (isMobile === null) return
+    if (isMobile) {
+      setEditingCategory(null)
+      setCategoryName("")
+      setFormOpen(true)
+    } else {
+      router.push("/categories/nouvelle")
+    }
   }
 
   function handleClose() {
@@ -143,7 +157,7 @@ export default function CategoriesPage() {
   }
 
   return (
-    <div className="space-y-4 p-4 animate-fade-in">
+    <div className="space-y-4 p-4 md:p-6 animate-fade-in max-w-6xl mx-auto">
       <div className="space-y-1">
         <h1 className="text-2xl font-bold">Catégories</h1>
         <p className="text-sm text-muted-foreground">
@@ -192,7 +206,7 @@ export default function CategoriesPage() {
 
       <Button
         size="lg"
-        className="fixed bottom-20 right-4 h-14 w-14 rounded-full shadow-lg z-40"
+        className="fixed bottom-20 md:bottom-6 right-4 h-14 w-14 rounded-full shadow-lg z-40"
         onClick={handleAdd}
       >
         <Plus className="h-6 w-6" />

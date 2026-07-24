@@ -31,7 +31,7 @@ export function BottomSheet({ open, onClose, title, description, children }: Bot
       <div className="absolute inset-0 bg-black/60" onClick={onClose} />
       <div
         ref={sheetRef}
-        className="relative w-full sm:max-w-md bg-popover sm:rounded-2xl rounded-t-2xl max-h-[92vh] flex flex-col animate-slide-up shadow-2xl"
+        className="relative w-full sm:max-w-lg md:max-w-xl bg-popover sm:rounded-2xl rounded-t-2xl max-h-[92vh] flex flex-col animate-slide-up sm:animate-fade-in shadow-2xl mx-0 sm:mx-4"
       >
         <div className="flex items-center justify-between px-5 pt-5 pb-3 shrink-0">
           <div>

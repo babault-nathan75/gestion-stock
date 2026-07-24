@@ -150,6 +150,11 @@ ALTER TABLE stock_exits ADD COLUMN IF NOT EXISTS unit_price NUMERIC(10,2) DEFAUL
 ALTER TABLE stock_entries ADD COLUMN IF NOT EXISTS warehouse TEXT NOT NULL DEFAULT 'Abidjan';
 ALTER TABLE stock_exits ADD COLUMN IF NOT EXISTS warehouse TEXT NOT NULL DEFAULT 'Abidjan';
 
+-- Champ created_by pour tracer l'utilisateur
+ALTER TABLE products ADD COLUMN IF NOT EXISTS created_by TEXT;
+ALTER TABLE stock_entries ADD COLUMN IF NOT EXISTS created_by TEXT;
+ALTER TABLE stock_exits ADD COLUMN IF NOT EXISTS created_by TEXT;
+
 -- Seed product_stock pour les produits existants dans Abidjan
 INSERT INTO product_stock (product_id, warehouse, quantity)
 SELECT id, 'Abidjan', quantity FROM products

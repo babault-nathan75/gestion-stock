@@ -1,8 +1,11 @@
 "use client"
 
 import { useEffect, useState, useCallback, useRef } from "react"
+import { useRouter } from "next/navigation"
 import { getSupabase } from "@/lib/supabase"
 import { useWarehouse } from "@/lib/warehouse-context"
+import { useIsMobile } from "@/lib/use-is-mobile"
+import { useAuthUser } from "@/lib/auth-context"
 import type { Product, StockEntry } from "@/lib/types"
 import { ProductCombobox } from "../components/ProductCombobox"
 import { Card, CardContent } from "@/components/ui/card"
@@ -47,11 +50,15 @@ interface BatchGroup {
   warehouse: string
   date: string
   notes: string | null
+  created_by: string | null
   lines: StockEntry[]
 }
 
 export default function EntreesPage() {
+  const router = useRouter()
+  const isMobile = useIsMobile()
   const { warehouse: ctxWarehouse } = useWarehouse()
+  const { pseudo } = useAuthUser()
   const [entries, setEntries] = useState<StockEntry[]>([])
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
@@ -152,7 +159,7 @@ export default function EntreesPage() {
         if (createError) { toast.error(`Erreur création "${line.product_name}": ${createError.message}`); setSubmitting(false); return }
         productId = newProduct.id
       }
-      rows.push({ batch_id: batchId, product_id: productId, quantity: parseInt(line.quantity), unit_price: parseFloat(line.unit_price) || 0, warehouse, origin: origin.trim(), date, notes: notes.trim() || null })
+      rows.push({ batch_id: batchId, product_id: productId, quantity: parseInt(line.quantity), unit_price: parseFloat(line.unit_price) || 0, warehouse, origin: origin.trim(), date, notes: notes.trim() || null, created_by: pseudo || null })
     }
 
     const { error } = await db.from("stock_entries").insert(rows)
@@ -166,7 +173,7 @@ export default function EntreesPage() {
     for (const item of items) {
       const existing = map.get(item.batch_id)
       if (existing) existing.lines.push(item)
-      else map.set(item.batch_id, { batch_id: item.batch_id, origin: item.origin, warehouse: item.warehouse, date: item.date, notes: item.notes, lines: [item] })
+      else map.set(item.batch_id, { batch_id: item.batch_id, origin: item.origin, warehouse: item.warehouse, date: item.date, notes: item.notes, created_by: item.created_by, lines: [item] })
     }
     return Array.from(map.values())
   }
@@ -178,7 +185,7 @@ export default function EntreesPage() {
   }
 
   return (
-    <div className="space-y-4 p-4 animate-fade-in">
+    <div className="space-y-4 p-4 md:p-6 animate-fade-in max-w-6xl mx-auto">
       <div className="space-y-1">
         <h1 className="text-2xl font-bold">Entrées de stock</h1>
         <p className="text-sm text-muted-foreground">
@@ -223,13 +230,18 @@ export default function EntreesPage() {
                   ))}
                 </div>
                 {group.notes && <p className="ml-13 text-xs text-muted-foreground italic">{group.notes}</p>}
+                {group.created_by && <p className="ml-13 text-xs text-muted-foreground">Ajouté par: <span className="font-medium text-foreground">{group.created_by}</span></p>}
               </CardContent>
             </Card>
           ))}
         </div>
       )}
 
-      <Button size="lg" className="fixed bottom-20 right-4 h-14 w-14 rounded-full shadow-lg z-40" onClick={() => setFormOpen(true)}>
+      <Button size="lg" className="fixed bottom-20 md:bottom-6 right-4 h-14 w-14 rounded-full shadow-lg z-40" onClick={() => {
+        if (isMobile === null) return
+        if (isMobile) setFormOpen(true)
+        else router.push("/entrees/nouvelle")
+      }}>
         <Plus className="h-6 w-6" />
       </Button>
 

@@ -30,9 +30,10 @@ interface ProductFormProps {
   onOpenChange: (open: boolean) => void
   product?: Product | null
   onSave: () => void
+  createdBy?: string | null
 }
 
-export function ProductForm({ open, onOpenChange, product, onSave }: ProductFormProps) {
+export function ProductForm({ open, onOpenChange, product, onSave, createdBy }: ProductFormProps) {
   const { warehouse: ctxWarehouse } = useWarehouse()
   const [name, setName] = useState("")
   const [category, setCategory] = useState("")
@@ -129,6 +130,7 @@ export function ProductForm({ open, onOpenChange, product, onSave }: ProductForm
           price: parseFloat(price) || 0,
           quantity: qty,
           alert_threshold: parseInt(alertThreshold) || 5,
+          created_by: createdBy || null,
         })
         .select("id")
         .single()

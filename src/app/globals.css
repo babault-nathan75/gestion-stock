@@ -94,3 +94,9 @@
 .pb-nav {
   padding-bottom: 5rem;
 }
+
+@media (min-width: 768px) {
+  .pb-nav {
+    padding-bottom: 0;
+  }
+}

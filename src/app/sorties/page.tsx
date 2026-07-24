@@ -1,8 +1,11 @@
 "use client"
 
 import { useEffect, useState, useCallback, useRef } from "react"
+import { useRouter } from "next/navigation"
 import { getSupabase } from "@/lib/supabase"
 import { useWarehouse } from "@/lib/warehouse-context"
+import { useIsMobile } from "@/lib/use-is-mobile"
+import { useAuthUser } from "@/lib/auth-context"
 import type { Product, StockExit } from "@/lib/types"
 import { ProductCombobox } from "../components/ProductCombobox"
 import { Card, CardContent } from "@/components/ui/card"
@@ -48,11 +51,15 @@ interface BatchGroup {
   warehouse: string
   date: string
   notes: string | null
+  created_by: string | null
   lines: StockExit[]
 }
 
 export default function SortiesPage() {
+  const router = useRouter()
+  const isMobile = useIsMobile()
   const { warehouse: ctxWarehouse } = useWarehouse()
+  const { pseudo } = useAuthUser()
   const [exits, setExits] = useState<StockExit[]>([])
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
@@ -164,7 +171,7 @@ export default function SortiesPage() {
         if (createError) { toast.error(`Erreur création "${line.product_name}": ${createError.message}`); setSubmitting(false); return }
         productId = newProduct.id
       }
-      rows.push({ batch_id: batchId, product_id: productId, quantity: parseInt(line.quantity), unit_price: parseFloat(line.unit_price) || 0, warehouse, destination: destination.trim(), recipient: recipient.trim(), date, notes: notes.trim() || null })
+      rows.push({ batch_id: batchId, product_id: productId, quantity: parseInt(line.quantity), unit_price: parseFloat(line.unit_price) || 0, warehouse, destination: destination.trim(), recipient: recipient.trim(), date, notes: notes.trim() || null, created_by: pseudo || null })
     }
 
     const { error } = await db.from("stock_exits").insert(rows)
@@ -178,7 +185,7 @@ export default function SortiesPage() {
     for (const item of items) {
       const existing = map.get(item.batch_id)
       if (existing) existing.lines.push(item)
-      else map.set(item.batch_id, { batch_id: item.batch_id, destination: item.destination, recipient: item.recipient, warehouse: item.warehouse, date: item.date, notes: item.notes, lines: [item] })
+      else map.set(item.batch_id, { batch_id: item.batch_id, destination: item.destination, recipient: item.recipient, warehouse: item.warehouse, date: item.date, notes: item.notes, created_by: item.created_by, lines: [item] })
     }
     return Array.from(map.values())
   }
@@ -190,7 +197,7 @@ export default function SortiesPage() {
   }
 
   return (
-    <div className="space-y-4 p-4 animate-fade-in">
+    <div className="space-y-4 p-4 md:p-6 animate-fade-in max-w-6xl mx-auto">
       <div className="space-y-1">
         <h1 className="text-2xl font-bold">Sorties de stock</h1>
         <p className="text-sm text-muted-foreground">
@@ -218,6 +225,7 @@ export default function SortiesPage() {
                       <p className="text-xs text-muted-foreground">Destination: {group.destination}</p>
                       <p className="text-xs text-muted-foreground">Réceptionnaire: {group.recipient}</p>
                       <p className="text-xs text-muted-foreground">{group.warehouse} · {format(new Date(group.date), "dd MMMM yyyy", { locale: fr })}</p>
+                      {group.created_by && <p className="text-xs text-yellow-400">Créé par: {group.created_by}</p>}
                     </div>
                   </div>
                   <Badge variant="secondary" className="bg-destructive/10 text-destructive shrink-0">
@@ -242,7 +250,11 @@ export default function SortiesPage() {
         </div>
       )}
 
-      <Button size="lg" className="fixed bottom-20 right-4 h-14 w-14 rounded-full shadow-lg z-40" onClick={() => setFormOpen(true)}>
+      <Button size="lg" className="fixed bottom-20 md:bottom-6 right-4 h-14 w-14 rounded-full shadow-lg z-40" onClick={() => {
+        if (isMobile === null) return
+        if (isMobile) setFormOpen(true)
+        else router.push("/sorties/nouvelle")
+      }}>
         <Plus className="h-6 w-6" />
       </Button>
 

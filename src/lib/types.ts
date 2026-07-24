@@ -6,6 +6,7 @@ export interface Product {
   price: number
   alert_threshold: number
   image_url: string | null
+  created_by: string | null
   created_at: string
 }
 
@@ -25,6 +26,7 @@ export interface StockEntry {
   origin: string
   date: string
   notes: string | null
+  created_by: string | null
   created_at: string
   products?: Product
 }
@@ -40,6 +42,7 @@ export interface StockExit {
   recipient: string
   date: string
   notes: string | null
+  created_by: string | null
   created_at: string
   products?: Product
 }

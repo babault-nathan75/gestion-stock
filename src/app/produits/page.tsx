@@ -1,8 +1,11 @@
 "use client"
 
 import { useEffect, useState, useMemo, useCallback, useRef } from "react"
+import { useRouter } from "next/navigation"
 import { getSupabase } from "@/lib/supabase"
 import { useWarehouse } from "@/lib/warehouse-context"
+import { useIsMobile } from "@/lib/use-is-mobile"
+import { useAuthUser } from "@/lib/auth-context"
 import type { Product, StockEntry, StockExit, ProductStock } from "@/lib/types"
 import { ProductForm } from "../components/ProductForm"
 import { Card, CardContent } from "@/components/ui/card"
@@ -50,7 +53,10 @@ interface ProductWithWarehouseQty extends Product {
 }
 
 export default function ProduitsPage() {
+  const router = useRouter()
+  const isMobile = useIsMobile()
   const { warehouse } = useWarehouse()
+  const { pseudo } = useAuthUser()
   const [products, setProducts] = useState<ProductWithWarehouseQty[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState("")
@@ -211,8 +217,13 @@ export default function ProduitsPage() {
   }
 
   function handleEdit(product: Product) {
-    setEditingProduct(product)
-    setFormOpen(true)
+    if (isMobile === null) return
+    if (isMobile) {
+      setEditingProduct(product)
+      setFormOpen(true)
+    } else {
+      router.push(`/produits/${product.id}/modifier`)
+    }
   }
 
   function handleFormClose() {
@@ -245,7 +256,7 @@ export default function ProduitsPage() {
   }
 
   return (
-    <div className="space-y-4 p-4 animate-fade-in">
+    <div className="space-y-4 p-4 md:p-6 animate-fade-in max-w-6xl mx-auto">
       <div className="flex items-start justify-between">
         <div className="space-y-1">
           <h1 className="text-2xl font-bold">Produits</h1>
@@ -367,6 +378,8 @@ export default function ProduitsPage() {
                         )}
                         <span>·</span>
                         <span className="font-medium">{(qty * product.price).toLocaleString("fr-FR")} Fcfa</span>
+                        {product.created_by && <span>·</span>}
+                        {product.created_by && <span className="text-yellow-400">Créé par: {product.created_by}</span>}
                       </div>
                     </div>
                   </div>
@@ -385,11 +398,15 @@ export default function ProduitsPage() {
         </div>
       )}
 
-      <Button size="lg" className="fixed bottom-20 right-4 h-14 w-14 rounded-full shadow-lg z-40" onClick={() => setFormOpen(true)}>
+      <Button size="lg" className="fixed bottom-20 md:bottom-6 right-4 h-14 w-14 rounded-full shadow-lg z-40" onClick={() => {
+        if (isMobile === null) return
+        if (isMobile) setFormOpen(true)
+        else router.push("/produits/nouveau")
+      }}>
         <Plus className="h-6 w-6" />
       </Button>
 
-      <ProductForm open={formOpen} onOpenChange={handleFormClose} product={editingProduct} onSave={loadProducts} />
+      <ProductForm open={formOpen} onOpenChange={handleFormClose} product={editingProduct} onSave={loadProducts} createdBy={pseudo} />
 
       <Dialog open={!!deleteProduct} onOpenChange={() => setDeleteProduct(null)}>
         <DialogContent>

@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo, useCallback, useRef } from "react"
 import { getSupabase } from "@/lib/supabase"
 import { useWarehouse } from "@/lib/warehouse-context"
-import type { Product, StockEntry, StockExit } from "@/lib/types"
+import type { Product, StockEntry, StockExit, WarehouseName } from "@/lib/types"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -32,6 +32,14 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const requestIdRef = useRef(0)
+
+  const [warehouseStats, setWarehouseStats] = useState<{
+    name: WarehouseName
+    products: Product[]
+    totalProducts: number
+    totalStock: number
+    totalValue: number
+  }[]>([])
 
   const loadData = useCallback(async (isRefresh = false) => {
     const requestId = ++requestIdRef.current
@@ -69,6 +77,31 @@ export default function DashboardPage() {
 
       if (warehouse === "all") {
         if (productsRes.data) setProducts(productsRes.data)
+
+        const warehouseNames: WarehouseName[] = ["Abidjan", "Sinfra"]
+        const statsResults = await Promise.all(
+          warehouseNames.map(async (wh) => {
+            const [stockRes, entriesRes, exitsRes] = await Promise.all([
+              db.from("product_stock").select("*, products(*)").eq("warehouse", wh).gt("quantity", 0),
+              db.from("stock_entries").select("*, products(name)").eq("warehouse", wh),
+              db.from("stock_exits").select("*, products(name)").eq("warehouse", wh),
+            ])
+            const prods = (stockRes.data || [])
+              .filter((ps: any) => ps.products)
+              .map((ps: any) => ({ ...ps.products, quantity: ps.quantity })) as Product[]
+            const totalStock = prods.reduce((s, p) => s + p.quantity, 0)
+            const totalValue = prods.reduce((s, p) => s + p.quantity * p.price, 0)
+            return {
+              name: wh,
+              products: prods,
+              totalProducts: prods.length,
+              totalStock,
+              totalValue,
+            }
+          })
+        )
+        if (requestId !== requestIdRef.current) return
+        setWarehouseStats(statsResults)
       } else {
         if (productsRes.data) {
           const mapped = productsRes.data
@@ -79,6 +112,7 @@ export default function DashboardPage() {
             }))
           setProducts(mapped as Product[])
         }
+        setWarehouseStats([])
       }
       if (entriesRes.data) setEntries(entriesRes.data)
       if (exitsRes.data) setExits(exitsRes.data)
@@ -150,7 +184,7 @@ export default function DashboardPage() {
 
   return (
     <PullToRefresh onRefresh={() => loadData(true)}>
-      <div className="space-y-4 p-4 animate-fade-in min-h-screen">
+      <div className="space-y-4 p-4 md:p-6 animate-fade-in min-h-screen max-w-6xl mx-auto">
         <div className="flex items-start justify-between">
           <div className="space-y-1">
             <h1 className="text-2xl font-bold text-white">Tableau de bord</h1>
@@ -169,7 +203,7 @@ export default function DashboardPage() {
           </Button>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <Card className="bg-neutral-900 border-neutral-800 shadow-sm">
             <CardContent className="flex items-center gap-3 p-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-yellow-500/10 border border-yellow-500/20">
@@ -194,7 +228,7 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
 
-          <Card className="col-span-2 bg-neutral-900 border-neutral-800 shadow-sm">
+          <Card className="col-span-2 md:col-span-2 bg-neutral-900 border-neutral-800 shadow-sm">
             <CardContent className="flex items-center gap-3 p-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-yellow-500/10 border border-yellow-500/20">
                 <Coins className="h-5 w-5 text-yellow-400" />
@@ -207,14 +241,46 @@ export default function DashboardPage() {
           </Card>
         </div>
 
+        {warehouse === "all" && warehouseStats.length > 0 && (
+          <div className="hidden md:block space-y-3">
+            <h2 className="text-sm font-semibold text-neutral-400 uppercase tracking-wider">Par entrepôt</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {warehouseStats.map((ws) => (
+                <Card key={ws.name} className="bg-neutral-900 border-neutral-800 shadow-sm">
+                  <CardContent className="p-4 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <div className="h-2.5 w-2.5 rounded-full bg-yellow-400" />
+                      <h3 className="font-semibold text-white">{ws.name}</h3>
+                    </div>
+                    <div className="grid grid-cols-3 gap-3">
+                      <div className="text-center p-2 rounded-lg bg-neutral-800/50">
+                        <p className="text-xl font-bold text-white">{ws.totalProducts}</p>
+                        <p className="text-[10px] text-neutral-400">Produits</p>
+                      </div>
+                      <div className="text-center p-2 rounded-lg bg-neutral-800/50">
+                        <p className="text-xl font-bold text-white">{ws.totalStock}</p>
+                        <p className="text-[10px] text-neutral-400">En stock</p>
+                      </div>
+                      <div className="text-center p-2 rounded-lg bg-neutral-800/50">
+                        <p className="text-sm font-bold text-yellow-400">{ws.totalValue.toLocaleString("fr-FR")}</p>
+                        <p className="text-[10px] text-neutral-400">Fcfa</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        )}
+
         {chartData.some((d) => d.entries > 0 || d.exits > 0) && (
           <Card className="bg-neutral-900 border-neutral-800 shadow-sm">
-            <CardContent className="p-3 space-y-2">
+            <CardContent className="p-3 md:p-4 space-y-2">
               <div className="flex items-center gap-2">
                 <BarChart3 className="h-4 w-4 text-yellow-400" />
                 <h2 className="font-semibold text-sm text-white">Entrées / Sorties (7 jours)</h2>
               </div>
-              <div className="flex items-end gap-1 h-28">
+              <div className="flex items-end gap-1 h-28 md:h-40">
                 {chartData.map((d) => (
                   <div key={d.date} className="flex-1 flex flex-col items-center gap-0.5 h-full justify-end">
                     <div className="w-full flex gap-0.5 items-end" style={{ height: "80%" }}>
@@ -239,142 +305,146 @@ export default function DashboardPage() {
           </Card>
         )}
 
-        {valueByCategory.length > 0 && (
-          <Card className="bg-neutral-900 border-neutral-800 shadow-sm">
-            <CardContent className="p-3 space-y-2">
-              <h2 className="font-semibold text-sm text-white">Valeur par catégorie</h2>
-              <div className="space-y-2">
-                {valueByCategory.map(([cat, value]) => {
-                  const pct = totalValue > 0 ? (value / totalValue) * 100 : 0
-                  return (
-                    <div key={cat} className="space-y-1">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-white">{cat}</span>
-                        <span className="font-medium text-yellow-400">{value.toLocaleString("fr-FR")} Fcfa</span>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {valueByCategory.length > 0 && (
+            <Card className="bg-neutral-900 border-neutral-800 shadow-sm">
+              <CardContent className="p-3 md:p-4 space-y-2">
+                <h2 className="font-semibold text-sm text-white">Valeur par catégorie</h2>
+                <div className="space-y-2">
+                  {valueByCategory.map(([cat, value]) => {
+                    const pct = totalValue > 0 ? (value / totalValue) * 100 : 0
+                    return (
+                      <div key={cat} className="space-y-1">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-white">{cat}</span>
+                          <span className="font-medium text-yellow-400">{value.toLocaleString("fr-FR")} Fcfa</span>
+                        </div>
+                        <div className="h-2 bg-neutral-800 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-yellow-400 rounded-full transition-all shadow-[0_0_8px_rgba(250,204,21,0.4)]"
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
                       </div>
-                      <div className="h-2 bg-neutral-800 rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-yellow-400 rounded-full transition-all shadow-[0_0_8px_rgba(250,204,21,0.4)]"
-                          style={{ width: `${pct}%` }}
-                        />
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            </CardContent>
-          </Card>
-        )}
+                    )
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
-        {topProducts.length > 0 && (
-          <Card className="bg-neutral-900 border-neutral-800 shadow-sm">
-            <CardContent className="p-3 space-y-2">
-              <div className="flex items-center gap-2">
-                <Trophy className="h-4 w-4 text-yellow-400" />
-                <h2 className="font-semibold text-sm text-white">Top produits (par valeur)</h2>
-              </div>
-              <div className="space-y-1">
-                {topProducts.map((p, i) => (
-                  <div key={p.id} className="flex items-center justify-between text-sm py-1 border-b border-neutral-800/50 last:border-0">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-yellow-500 w-4">{i + 1}</span>
-                      <span className="text-white">{p.name}</span>
+          {topProducts.length > 0 && (
+            <Card className="bg-neutral-900 border-neutral-800 shadow-sm">
+              <CardContent className="p-3 md:p-4 space-y-2">
+                <div className="flex items-center gap-2">
+                  <Trophy className="h-4 w-4 text-yellow-400" />
+                  <h2 className="font-semibold text-sm text-white">Top produits (par valeur)</h2>
+                </div>
+                <div className="space-y-1">
+                  {topProducts.map((p, i) => (
+                    <div key={p.id} className="flex items-center justify-between text-sm py-1 border-b border-neutral-800/50 last:border-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-yellow-500 w-4">{i + 1}</span>
+                        <span className="text-white">{p.name}</span>
+                      </div>
+                      <span className="font-medium text-yellow-400">{(p.quantity * p.price).toLocaleString("fr-FR")} Fcfa</span>
                     </div>
-                    <span className="font-medium text-yellow-400">{(p.quantity * p.price).toLocaleString("fr-FR")} Fcfa</span>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
 
         {lowStockProducts.length > 0 && (
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4 text-yellow-400" />
-              <h2 className="font-semibold text-white">Stock bas</h2>
-              <Badge variant="destructive" className="text-xs bg-red-500/20 text-red-400 border border-red-500/30">
-                {lowStockProducts.length}
-              </Badge>
-            </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              {lowStockProducts.map((product) => (
-                <Card key={product.id} className="bg-neutral-900 border-neutral-800">
-                  <CardContent className="flex items-center justify-between p-3">
-                    <div>
-                      <p className="font-medium text-white">{product.name}</p>
-                      <p className="text-xs text-neutral-400">
-                        {product.category || "Sans catégorie"} · Seuil: {product.alert_threshold || 5} · {(product.quantity * product.price).toLocaleString("fr-FR")} Fcfa
-                      </p>
-                    </div>
-                    <Badge
-                      variant={product.quantity === 0 ? "destructive" : "secondary"}
-                      className={`text-sm ${
-                        product.quantity === 0 
-                          ? "bg-red-500/20 text-red-400 border border-red-500/30" 
-                          : "bg-neutral-800 text-yellow-400 border border-yellow-500/20"
-                      }`}
-                    >
-                      {product.quantity}
-                    </Badge>
-                  </CardContent>
-                </Card>
-              ))}
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 text-yellow-400" />
+                <h2 className="font-semibold text-white">Stock bas</h2>
+                <Badge variant="destructive" className="text-xs bg-red-500/20 text-red-400 border border-red-500/30">
+                  {lowStockProducts.length}
+                </Badge>
+              </div>
+              <div className="space-y-2">
+                {lowStockProducts.map((product) => (
+                  <Card key={product.id} className="bg-neutral-900 border-neutral-800">
+                    <CardContent className="flex items-center justify-between p-3">
+                      <div>
+                        <p className="font-medium text-white">{product.name}</p>
+                        <p className="text-xs text-neutral-400">
+                          {product.category || "Sans catégorie"} · Seuil: {product.alert_threshold || 5} · {(product.quantity * product.price).toLocaleString("fr-FR")} Fcfa
+                        </p>
+                      </div>
+                      <Badge
+                        variant={product.quantity === 0 ? "destructive" : "secondary"}
+                        className={`text-sm ${
+                          product.quantity === 0 
+                            ? "bg-red-500/20 text-red-400 border border-red-500/30" 
+                            : "bg-neutral-800 text-yellow-400 border border-yellow-500/20"
+                        }`}
+                      >
+                        {product.quantity}
+                      </Badge>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <h2 className="font-semibold text-white">Mouvements récents</h2>
+              {entries.length === 0 && exits.length === 0 ? (
+                <p className="text-sm text-neutral-400 text-center py-4">
+                  Aucun mouvement enregistré
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {[...entries, ...exits]
+                    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+                    .slice(0, 8)
+                    .map((item) => {
+                      const isEntry = "origin" in item
+                      const entry = item as StockEntry
+                      const exit = item as StockExit
+                      return (
+                        <Card key={item.id} className="bg-neutral-900 border-neutral-800">
+                          <CardContent className="flex items-center justify-between p-3">
+                            <div className="flex items-center gap-3">
+                              <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border ${
+                                isEntry ? "bg-yellow-400/10 border-yellow-500/20" : "bg-red-500/10 border-red-500/20"
+                              }`}>
+                                {isEntry ? (
+                                  <TrendingUp className="h-4 w-4 text-yellow-400" />
+                                ) : (
+                                  <TrendingDown className="h-4 w-4 text-red-400" />
+                                )}
+                              </div>
+                              <div>
+                                <p className="text-sm font-medium text-white">{(item.products as any)?.name || "Produit"}</p>
+                                <p className="text-xs text-neutral-400">
+                                  {isEntry ? `De: ${entry.origin}` : `${exit.destination} · ${exit.recipient}`}
+                                  {" · "}
+                                  {item.warehouse && <>{item.warehouse} · </>}
+                                  {format(new Date(item.date), "dd MMM", { locale: fr })}
+                                </p>
+                              </div>
+                            </div>
+                            <Badge
+                              variant="secondary"
+                              className={isEntry ? "bg-yellow-400/10 text-yellow-400 border border-yellow-500/20" : "bg-red-500/10 text-red-400 border border-red-500/20"}
+                            >
+                              {isEntry ? "+" : "-"}{item.quantity}
+                            </Badge>
+                          </CardContent>
+                        </Card>
+                      )
+                    })}
+                </div>
+              )}
             </div>
           </div>
         )}
-
-        <div className="space-y-2">
-          <h2 className="font-semibold text-white">Mouvements récents</h2>
-          {entries.length === 0 && exits.length === 0 ? (
-            <p className="text-sm text-neutral-400 text-center py-4">
-              Aucun mouvement enregistré
-            </p>
-          ) : (
-            <div className="space-y-2">
-              {[...entries, ...exits]
-                .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-                .slice(0, 8)
-                .map((item) => {
-                  const isEntry = "origin" in item
-                  const entry = item as StockEntry
-                  const exit = item as StockExit
-                  return (
-                    <Card key={item.id} className="bg-neutral-900 border-neutral-800">
-                      <CardContent className="flex items-center justify-between p-3">
-                        <div className="flex items-center gap-3">
-                          <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border ${
-                            isEntry ? "bg-yellow-400/10 border-yellow-500/20" : "bg-red-500/10 border-red-500/20"
-                          }`}>
-                            {isEntry ? (
-                              <TrendingUp className="h-4 w-4 text-yellow-400" />
-                            ) : (
-                              <TrendingDown className="h-4 w-4 text-red-400" />
-                            )}
-                          </div>
-                          <div>
-                            <p className="text-sm font-medium text-white">{(item.products as any)?.name || "Produit"}</p>
-                            <p className="text-xs text-neutral-400">
-                              {isEntry ? `De: ${entry.origin}` : `${exit.destination} · ${exit.recipient}`}
-                              {" · "}
-                              {item.warehouse && <>{item.warehouse} · </>}
-                              {format(new Date(item.date), "dd MMM", { locale: fr })}
-                            </p>
-                          </div>
-                        </div>
-                        <Badge
-                          variant="secondary"
-                          className={isEntry ? "bg-yellow-400/10 text-yellow-400 border border-yellow-500/20" : "bg-red-500/10 text-red-400 border border-red-500/20"}
-                        >
-                          {isEntry ? "+" : "-"}{item.quantity}
-                        </Badge>
-                      </CardContent>
-                    </Card>
-                  )
-                })}
-            </div>
-          )}
-        </div>
       </div>
     </PullToRefresh>
   )

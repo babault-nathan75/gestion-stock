@@ -15,6 +15,7 @@ interface ProductComboboxProps {
   products: Product[]
   placeholder?: string
   showStock?: boolean
+  warehouse?: string
 }
 
 export function ProductCombobox({

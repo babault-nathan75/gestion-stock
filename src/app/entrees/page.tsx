@@ -54,6 +54,10 @@ interface BatchGroup {
   lines: StockEntry[]
 }
 
+interface ProductWithWarehouseQty extends Product {
+  warehouse_quantity: number
+}
+
 export default function EntreesPage() {
   const router = useRouter()
   const isMobile = useIsMobile()
@@ -61,6 +65,7 @@ export default function EntreesPage() {
   const { pseudo } = useAuthUser()
   const [entries, setEntries] = useState<StockEntry[]>([])
   const [products, setProducts] = useState<Product[]>([])
+  const [dialogProducts, setDialogProducts] = useState<ProductWithWarehouseQty[]>([])
   const [loading, setLoading] = useState(true)
   const [formOpen, setFormOpen] = useState(false)
   const [submitting, setSubmitting] = useState(false)
@@ -73,6 +78,31 @@ export default function EntreesPage() {
     { key: crypto.randomUUID(), product_id: "", product_name: "", quantity: "", unit_price: "" },
   ])
   const requestIdRef = useRef(0)
+
+  const loadDialogProducts = useCallback(async () => {
+    const db = getSupabase()
+    try {
+      const { data } = await db
+        .from("product_stock")
+        .select("*, products(*)")
+        .eq("warehouse", warehouse)
+        .gt("quantity", 0)
+      if (data) {
+        const mapped = data
+          .filter((ps: any) => ps.products)
+          .map((ps: any) => ({
+            ...ps.products,
+            warehouse_quantity: ps.quantity,
+          })) as ProductWithWarehouseQty[]
+        mapped.sort((a, b) => a.name.localeCompare(b.name))
+        setDialogProducts(mapped)
+      }
+    } catch {}
+  }, [warehouse])
+
+  useEffect(() => {
+    if (formOpen) loadDialogProducts()
+  }, [formOpen, loadDialogProducts])
 
   const loadData = useCallback(async () => {
     const requestId = ++requestIdRef.current
@@ -138,6 +168,10 @@ export default function EntreesPage() {
 
   function getStock(productId: string): number {
     return products.find((p) => p.id === productId)?.quantity || 0
+  }
+
+  function getDialogStock(productId: string): number {
+    return dialogProducts.find((p) => p.id === productId)?.warehouse_quantity || 0
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -308,8 +342,9 @@ export default function EntreesPage() {
                               updateLine(line.key, "product_id", id); 
                               if (name) updateLine(line.key, "product_name", name);
                             }} 
-                            products={products} 
+                            products={dialogProducts} 
                             placeholder="Sélectionner un produit" 
+                            warehouse={warehouse}
                           />
                         )}
                       </div>
@@ -370,7 +405,7 @@ export default function EntreesPage() {
                     {/* Stock actuel */}
                     {line.product_id && line.product_id !== "__new__" && (
                       <p className="text-xs text-muted-foreground pt-1 border-t border-border/50">
-                        Stock actuel : <span className="font-medium text-foreground">{getStock(line.product_id)}</span>
+                        Stock actuel : <span className="font-medium text-foreground">{getDialogStock(line.product_id)}</span>
                       </p>
                     )}
                   </div>

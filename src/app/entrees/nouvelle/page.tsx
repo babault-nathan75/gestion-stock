@@ -29,11 +29,15 @@ interface FormLine {
   unit_price: string
 }
 
+interface ProductWithWarehouseQty extends Product {
+  warehouse_quantity: number
+}
+
 export default function NouvelleEntreePage() {
   const router = useRouter()
   const { warehouse: ctxWarehouse } = useWarehouse()
   const { pseudo } = useAuthUser()
-  const [products, setProducts] = useState<Product[]>([])
+  const [products, setProducts] = useState<ProductWithWarehouseQty[]>([])
   const [submitting, setSubmitting] = useState(false)
 
   const [origin, setOrigin] = useState("")
@@ -44,11 +48,30 @@ export default function NouvelleEntreePage() {
     { key: crypto.randomUUID(), product_id: "", product_name: "", quantity: "", unit_price: "" },
   ])
 
+  const loadProducts = useCallback(async () => {
+    const db = getSupabase()
+    try {
+      const { data } = await db
+        .from("product_stock")
+        .select("*, products(*)")
+        .eq("warehouse", warehouse)
+        .gt("quantity", 0)
+      if (data) {
+        const mapped = data
+          .filter((ps: any) => ps.products)
+          .map((ps: any) => ({
+            ...ps.products,
+            warehouse_quantity: ps.quantity,
+          })) as ProductWithWarehouseQty[]
+        mapped.sort((a, b) => a.name.localeCompare(b.name))
+        setProducts(mapped)
+      }
+    } catch {}
+  }, [warehouse])
+
   useEffect(() => {
-    getSupabase().from("products").select("*").order("name").then(({ data }) => {
-      if (data) setProducts(data)
-    })
-  }, [])
+    loadProducts()
+  }, [loadProducts])
 
   useEffect(() => {
     if (ctxWarehouse !== "all") setWarehouse(ctxWarehouse)
@@ -68,7 +91,7 @@ export default function NouvelleEntreePage() {
   }
 
   function getStock(productId: string): number {
-    return products.find((p) => p.id === productId)?.quantity || 0
+    return products.find((p) => p.id === productId)?.warehouse_quantity || 0
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -165,6 +188,7 @@ export default function NouvelleEntreePage() {
                           }}
                           products={products}
                           placeholder="Sélectionner un produit"
+                          warehouse={warehouse}
                         />
                       )}
                     </div>

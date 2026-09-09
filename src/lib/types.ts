@@ -59,4 +59,4 @@ export interface Warehouse {
   created_at: string
 }
 
-export type WarehouseName = "all" | "Abidjan" | "Sinfra"
+export type WarehouseName = string

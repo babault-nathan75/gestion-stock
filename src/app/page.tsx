@@ -23,7 +23,7 @@ import { PullToRefresh } from "./components/PullToRefresh"
 import { StockLoader } from "./components/StockLoader"
 
 export default function DashboardPage() {
-  const { warehouse } = useWarehouse()
+  const { warehouse, warehouses } = useWarehouse()
   const [products, setProducts] = useState<Product[]>([])
   const [entries, setEntries] = useState<StockEntry[]>([])
   const [exits, setExits] = useState<StockExit[]>([])
@@ -78,7 +78,7 @@ export default function DashboardPage() {
       if (warehouse === "all") {
         if (productsRes.data) setProducts(productsRes.data)
 
-        const warehouseNames: WarehouseName[] = ["Abidjan", "Sinfra"]
+        const warehouseNames: string[] = warehouses
         const statsResults = await Promise.all(
           warehouseNames.map(async (wh) => {
             const [stockRes, entriesRes, exitsRes] = await Promise.all([
@@ -121,7 +121,7 @@ export default function DashboardPage() {
     } catch {}
     setLoading(false)
     setRefreshing(false)
-  }, [warehouse])
+  }, [warehouse, warehouses])
 
   useEffect(() => {
     loadData()

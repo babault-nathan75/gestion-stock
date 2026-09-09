@@ -7,7 +7,6 @@ import { Package, LayoutDashboard, ArrowDownToLine, ArrowUpFromLine, Tag, Wareho
 import { cn } from "@/lib/utils"
 import { useWarehouse } from "@/lib/warehouse-context"
 import { useAuthUser } from "@/lib/auth-context"
-import type { WarehouseName } from "@/lib/types"
 
 const navItems = [
   { href: "/", label: "Tableau de bord", icon: LayoutDashboard },
@@ -17,17 +16,16 @@ const navItems = [
   { href: "/sorties", label: "Sorties", icon: ArrowUpFromLine },
 ]
 
-const warehouses: { value: WarehouseName; label: string }[] = [
-  { value: "all", label: "Tous les entrepôts" },
-  { value: "Abidjan", label: "Abidjan" },
-  { value: "Sinfra", label: "Sinfra" },
-]
-
 export function DesktopSidebar() {
   const router = useRouter()
   const pathname = usePathname()
-  const { warehouse, setWarehouse } = useWarehouse()
+  const { warehouse, setWarehouse, warehouses } = useWarehouse()
   const { pseudo } = useAuthUser()
+
+  const options = [
+    { value: "all", label: "Tous les entrepôts" },
+    ...warehouses.map((name) => ({ value: name, label: name })),
+  ]
 
   async function handleLogout() {
     await fetch("/api/auth/logout", { method: "POST" })
@@ -69,7 +67,7 @@ return (
           <span className="text-xs font-semibold uppercase tracking-wider text-neutral-500">Entrepôts</span>
         </div>
         <div className="space-y-0.5">
-          {warehouses.map((w) => (
+          {options.map((w) => (
             <button
               key={w.value}
               onClick={() => setWarehouse(w.value)}

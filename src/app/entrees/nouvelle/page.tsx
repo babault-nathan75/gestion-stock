@@ -35,13 +35,13 @@ interface ProductWithWarehouseQty extends Product {
 
 export default function NouvelleEntreePage() {
   const router = useRouter()
-  const { warehouse: ctxWarehouse } = useWarehouse()
+  const { warehouse: ctxWarehouse, warehouses } = useWarehouse()
   const { pseudo } = useAuthUser()
   const [products, setProducts] = useState<ProductWithWarehouseQty[]>([])
   const [submitting, setSubmitting] = useState(false)
 
   const [origin, setOrigin] = useState("")
-  const [warehouse, setWarehouse] = useState(ctxWarehouse === "all" ? "Abidjan" : ctxWarehouse)
+  const [warehouse, setWarehouse] = useState(ctxWarehouse === "all" ? (warehouses[0] ?? "Abidjan") : ctxWarehouse)
   const [date, setDate] = useState(new Date().toISOString().split("T")[0])
   const [notes, setNotes] = useState("")
   const [lines, setLines] = useState<FormLine[]>([
@@ -150,8 +150,9 @@ export default function NouvelleEntreePage() {
               <Select value={warehouse} onValueChange={(v) => setWarehouse(v ?? "Abidjan")}>
                 <SelectTrigger className="h-11"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Abidjan">Abidjan</SelectItem>
-                  <SelectItem value="Sinfra">Sinfra</SelectItem>
+                  {warehouses.map((name) => (
+                    <SelectItem key={name} value={name}>{name}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>

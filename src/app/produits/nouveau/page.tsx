@@ -21,14 +21,14 @@ import { toast } from "sonner"
 
 export default function NouveauProduitPage() {
   const router = useRouter()
-  const { warehouse: ctxWarehouse } = useWarehouse()
+  const { warehouse: ctxWarehouse, warehouses } = useWarehouse()
   const { pseudo } = useAuthUser()
   const [name, setName] = useState("")
   const [category, setCategory] = useState("")
   const [price, setPrice] = useState("0")
   const [quantity, setQuantity] = useState("0")
   const [alertThreshold, setAlertThreshold] = useState("5")
-  const [warehouse, setWarehouse] = useState(ctxWarehouse === "all" ? "Abidjan" : ctxWarehouse)
+  const [warehouse, setWarehouse] = useState(ctxWarehouse === "all" ? (warehouses[0] ?? "Abidjan") : ctxWarehouse)
   const [loading, setLoading] = useState(false)
   const [categories, setCategories] = useState<Category[]>([])
 
@@ -121,8 +121,9 @@ export default function NouveauProduitPage() {
               <Select value={warehouse} onValueChange={(v) => setWarehouse(v ?? "Abidjan")}>
                 <SelectTrigger className="h-11"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Abidjan">Abidjan</SelectItem>
-                  <SelectItem value="Sinfra">Sinfra</SelectItem>
+                  {warehouses.map((name) => (
+                    <SelectItem key={name} value={name}>{name}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground">Le stock initial sera attribué à cet entrepôt</p>

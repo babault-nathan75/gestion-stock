@@ -61,7 +61,7 @@ interface ProductWithWarehouseQty extends Product {
 export default function EntreesPage() {
   const router = useRouter()
   const isMobile = useIsMobile()
-  const { warehouse: ctxWarehouse } = useWarehouse()
+  const { warehouse: ctxWarehouse, warehouses } = useWarehouse()
   const { pseudo } = useAuthUser()
   const [entries, setEntries] = useState<StockEntry[]>([])
   const [products, setProducts] = useState<Product[]>([])
@@ -71,7 +71,7 @@ export default function EntreesPage() {
   const [submitting, setSubmitting] = useState(false)
 
   const [origin, setOrigin] = useState("")
-  const [warehouse, setWarehouse] = useState(ctxWarehouse === "all" ? "Abidjan" : ctxWarehouse)
+  const [warehouse, setWarehouse] = useState(ctxWarehouse === "all" ? (warehouses[0] ?? "Abidjan") : ctxWarehouse)
   const [date, setDate] = useState(format(new Date(), "yyyy-MM-dd"))
   const [notes, setNotes] = useState("")
   const [lines, setLines] = useState<FormLine[]>([
@@ -158,7 +158,7 @@ export default function EntreesPage() {
 
   function resetForm() {
     setOrigin("")
-    setWarehouse(ctxWarehouse === "all" ? "Abidjan" : ctxWarehouse)
+    setWarehouse(ctxWarehouse === "all" ? (warehouses[0] ?? "Abidjan") : ctxWarehouse)
     setDate(format(new Date(), "yyyy-MM-dd"))
     setNotes("")
     setLines([{ key: crypto.randomUUID(), product_id: "", product_name: "", quantity: "", unit_price: "" }])
@@ -306,8 +306,9 @@ export default function EntreesPage() {
               <Select value={warehouse} onValueChange={(v) => setWarehouse(v ?? "Abidjan")}>
                 <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Abidjan">Abidjan</SelectItem>
-                  <SelectItem value="Sinfra">Sinfra</SelectItem>
+                  {warehouses.map((name) => (
+                    <SelectItem key={name} value={name}>{name}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>

@@ -3,21 +3,19 @@
 import { useRouter } from "next/navigation"
 import { useWarehouse } from "@/lib/warehouse-context"
 import { useAuthUser } from "@/lib/auth-context"
-import type { WarehouseName } from "@/lib/types"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { LogOut, User } from "lucide-react"
 
-const warehouses: { value: WarehouseName; label: string }[] = [
-  { value: "all", label: "Tous" },
-  { value: "Abidjan", label: "Abidjan" },
-  { value: "Sinfra", label: "Sinfra" },
-]
-
 export function Header() {
   const router = useRouter()
-  const { warehouse, setWarehouse } = useWarehouse()
+  const { warehouse, setWarehouse, warehouses } = useWarehouse()
   const { pseudo } = useAuthUser()
+
+  const options = [
+    { value: "all", label: "Tous" },
+    ...warehouses.map((name) => ({ value: name, label: name })),
+  ]
 
   async function handleLogout() {
     await fetch("/api/auth/logout", { method: "POST" })
@@ -47,7 +45,7 @@ export function Header() {
         </div>
       </div>
       <div className="flex gap-1.5 px-4 pb-2">
-        {warehouses.map((w) => (
+        {options.map((w) => (
           <Button
             key={w.value}
             variant="ghost"

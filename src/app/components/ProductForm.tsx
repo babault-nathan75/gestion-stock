@@ -34,21 +34,21 @@ interface ProductFormProps {
 }
 
 export function ProductForm({ open, onOpenChange, product, onSave, createdBy }: ProductFormProps) {
-  const { warehouse: ctxWarehouse } = useWarehouse()
+  const { warehouse: ctxWarehouse, warehouses } = useWarehouse()
   const [name, setName] = useState("")
   const [category, setCategory] = useState("")
   const [price, setPrice] = useState("0")
   const [quantity, setQuantity] = useState("0")
   const [alertThreshold, setAlertThreshold] = useState("5")
-  const [warehouse, setWarehouse] = useState(ctxWarehouse === "all" ? "Abidjan" : ctxWarehouse)
+  const [warehouse, setWarehouse] = useState(ctxWarehouse === "all" ? (warehouses[0] ?? "Abidjan") : ctxWarehouse)
   const [loading, setLoading] = useState(false)
   const [categories, setCategories] = useState<Category[]>([])
   const [warehouseStock, setWarehouseStock] = useState<ProductStock[]>([])
 
   const isEditing = !!product
 
-  const warehouseRef = useRef(ctxWarehouse === "all" ? "Abidjan" : ctxWarehouse)
-  warehouseRef.current = ctxWarehouse === "all" ? "Abidjan" : ctxWarehouse
+  const warehouseRef = useRef(ctxWarehouse === "all" ? (warehouses[0] ?? "Abidjan") : ctxWarehouse)
+  warehouseRef.current = ctxWarehouse === "all" ? (warehouses[0] ?? "Abidjan") : ctxWarehouse
 
   useEffect(() => {
     if (open) {
@@ -232,8 +232,9 @@ export function ProductForm({ open, onOpenChange, product, onSave, createdBy }: 
               <Select value={warehouse} onValueChange={(v) => setWarehouse(v ?? "Abidjan")}>
                 <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Abidjan">Abidjan</SelectItem>
-                  <SelectItem value="Sinfra">Sinfra</SelectItem>
+                  {warehouses.map((name) => (
+                    <SelectItem key={name} value={name}>{name}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground">

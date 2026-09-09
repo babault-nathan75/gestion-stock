@@ -41,7 +41,7 @@ CREATE TABLE IF NOT EXISTS warehouses (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
-INSERT INTO warehouses (name) VALUES ('Abidjan'), ('Sinfra')
+INSERT INTO warehouses (name) VALUES ('Abidjan'), ('Sinfra'), ('Paris')
 ON CONFLICT (name) DO NOTHING;
 
 -- Table des entrées de stock (réceptions)

@@ -29,7 +29,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Plus, ArrowDownToLine, Trash2 } from "lucide-react"
+import { Plus, ArrowDownToLine, Trash2, Pencil } from "lucide-react"
 import { format } from "date-fns"
 import { fr } from "date-fns/locale"
 import { toast } from "sonner"
@@ -62,13 +62,15 @@ export default function EntreesPage() {
   const router = useRouter()
   const isMobile = useIsMobile()
   const { warehouse: ctxWarehouse, warehouses } = useWarehouse()
-  const { pseudo } = useAuthUser()
+  const { pseudo, role } = useAuthUser()
   const [entries, setEntries] = useState<StockEntry[]>([])
   const [products, setProducts] = useState<Product[]>([])
   const [dialogProducts, setDialogProducts] = useState<ProductWithWarehouseQty[]>([])
   const [loading, setLoading] = useState(true)
   const [formOpen, setFormOpen] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const [editingBatch, setEditingBatch] = useState<BatchGroup | null>(null)
+  const [adminSaving, setAdminSaving] = useState(false)
 
   const [origin, setOrigin] = useState("")
   const [warehouse, setWarehouse] = useState(ctxWarehouse === "all" ? (warehouses[0] ?? "Abidjan") : ctxWarehouse)
@@ -78,6 +80,7 @@ export default function EntreesPage() {
     { key: crypto.randomUUID(), product_id: "", product_name: "", quantity: "", unit_price: "" },
   ])
   const requestIdRef = useRef(0)
+  const editingBatchRef = useRef<BatchGroup | null>(null)
 
   const loadDialogProducts = useCallback(async () => {
     const db = getSupabase()
@@ -94,11 +97,19 @@ export default function EntreesPage() {
             ...ps.products,
             warehouse_quantity: ps.quantity,
           })) as ProductWithWarehouseQty[]
+        const editing = editingBatchRef.current
+        if (editing) {
+          for (const line of editing.lines) {
+            if (mapped.some((p) => p.id === line.product_id)) continue
+            const prod = products.find((p) => p.id === line.product_id)
+            if (prod) mapped.push({ ...prod, warehouse_quantity: 0 })
+          }
+        }
         mapped.sort((a, b) => a.name.localeCompare(b.name))
         setDialogProducts(mapped)
       }
     } catch {}
-  }, [warehouse])
+  }, [warehouse, products])
 
   useEffect(() => {
     if (formOpen) loadDialogProducts()
@@ -164,7 +175,7 @@ export default function EntreesPage() {
     setLines([{ key: crypto.randomUUID(), product_id: "", product_name: "", quantity: "", unit_price: "" }])
   }
 
-  function handleClose() { resetForm(); setFormOpen(false) }
+  function handleClose() { resetForm(); editingBatchRef.current = null; setEditingBatch(null); setFormOpen(false) }
 
   function getStock(productId: string): number {
     return products.find((p) => p.id === productId)?.quantity || 0
@@ -176,6 +187,10 @@ export default function EntreesPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    if (editingBatch) {
+      await handleUpdate()
+      return
+    }
     if (!origin.trim()) { toast.error("La provenance est requise"); return }
     const validLines = lines.filter((l) => (l.product_id || l.product_name) && l.quantity && parseInt(l.quantity) > 0)
     if (validLines.length === 0) { toast.error("Ajoutez au moins un produit avec une quantité"); return }
@@ -210,6 +225,81 @@ export default function EntreesPage() {
       else map.set(item.batch_id, { batch_id: item.batch_id, origin: item.origin, warehouse: item.warehouse, date: item.date, notes: item.notes, created_by: item.created_by, lines: [item] })
     }
     return Array.from(map.values())
+  }
+
+  function openEdit(group: BatchGroup) {
+    editingBatchRef.current = group
+    setEditingBatch(group)
+    setOrigin(group.origin)
+    setWarehouse(group.warehouse)
+    setDate(group.date)
+    setNotes(group.notes || "")
+    setLines(
+      group.lines.map((line) => ({
+        key: crypto.randomUUID(),
+        product_id: line.product_id,
+        product_name: (line.products as any)?.name || "",
+        quantity: String(line.quantity),
+        unit_price: String(line.unit_price),
+      }))
+    )
+    setFormOpen(true)
+  }
+
+  async function handleUpdate() {
+    if (!origin.trim()) { toast.error("La provenance est requise"); return }
+    const validLines = lines.filter((l) => (l.product_id || l.product_name) && l.quantity && parseInt(l.quantity) > 0)
+    if (validLines.length === 0) { toast.error("Ajoutez au moins un produit avec une quantité"); return }
+    if (!editingBatch) return
+
+    setAdminSaving(true)
+    try {
+      const res = await fetch(`/api/movements/batch/${editingBatch.batch_id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "entry",
+          warehouse,
+          date,
+          notes,
+          origin: origin.trim(),
+          lines: validLines.map((l) => ({
+            product_id: l.product_id,
+            product_name: l.product_name,
+            quantity: parseInt(l.quantity),
+            unit_price: parseFloat(l.unit_price) || 0,
+          })),
+        }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        toast.error(data.error || "Erreur lors de la modification")
+        return
+      }
+      toast.success("Entrée modifiée, stock réajusté")
+      handleClose()
+      loadData()
+    } catch {
+      toast.error("Erreur de réseau")
+    } finally {
+      setAdminSaving(false)
+    }
+  }
+
+  async function handleDelete(group: BatchGroup) {
+    if (!window.confirm(`Supprimer ce lot d'entrée (${group.lines.length} produit(s)) ? Le stock sera réajusté.`)) return
+    try {
+      const res = await fetch(`/api/movements/batch/${group.batch_id}?type=entry`, { method: "DELETE" })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        toast.error(data.error || "Erreur lors de la suppression")
+        return
+      }
+      toast.success("Lot supprimé, stock réajusté")
+      loadData()
+    } catch {
+      toast.error("Erreur de réseau")
+    }
   }
 
   const grouped = groupByBatch(entries)
@@ -248,9 +338,27 @@ export default function EntreesPage() {
                       <p className="text-xs text-muted-foreground">{group.warehouse} · {format(new Date(group.date), "dd MMMM yyyy", { locale: fr })}</p>
                     </div>
                   </div>
-                  <Badge variant="secondary" className="bg-success/10 text-success shrink-0">
-                    {group.lines.length} produit{group.lines.length > 1 ? "s" : ""}
-                  </Badge>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Badge variant="secondary" className="bg-success/10 text-success">
+                      {group.lines.length} produit{group.lines.length > 1 ? "s" : ""}
+                    </Badge>
+                    {role === "SUPER_ADMIN" && (
+                      <>
+                        <Button variant="ghost" size="icon-sm" onClick={() => openEdit(group)} aria-label="Modifier le lot">
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          className="text-destructive hover:text-destructive"
+                          onClick={() => handleDelete(group)}
+                          aria-label="Supprimer le lot"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </>
+                    )}
+                  </div>
                 </div>
                 <div className="ml-13 space-y-1">
                   {group.lines.map((line) => (
@@ -283,8 +391,10 @@ export default function EntreesPage() {
         {/* Correction apportée ici : overflow-y-visible pour laisser le menu déroulant du combobox flotter proprement par-dessus */}
         <DialogContent className="w-[calc(100vw-2rem)] max-w-md max-h-[90vh] overflow-y-visible overflow-x-hidden p-4 sm:p-6 rounded-lg">
           <DialogHeader>
-            <DialogTitle>Nouvelle entrée</DialogTitle>
-            <DialogDescription>Réceptionner un ou plusieurs produits</DialogDescription>
+            <DialogTitle>{editingBatch ? "Modifier l'entrée" : "Nouvelle entrée"}</DialogTitle>
+            <DialogDescription>
+              {editingBatch ? "Le stock sera réajusté automatiquement." : "Réceptionner un ou plusieurs produits"}
+            </DialogDescription>
           </DialogHeader>
 
           <form onSubmit={handleSubmit} className="space-y-4 max-h-[calc(90vh-120px)] overflow-y-auto px-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
@@ -425,8 +535,8 @@ export default function EntreesPage() {
               <Button type="button" variant="outline" onClick={handleClose} className="w-full sm:w-auto">
                 Annuler
               </Button>
-              <Button type="submit" disabled={submitting} className="w-full sm:w-auto">
-                {submitting ? "Enregistrement..." : "Enregistrer"}
+              <Button type="submit" disabled={submitting || adminSaving} className="w-full sm:w-auto">
+                {submitting || adminSaving ? "Enregistrement..." : editingBatch ? "Enregistrer les modifications" : "Enregistrer"}
               </Button>
             </DialogFooter>
           </form>

@@ -10,7 +10,7 @@ import { useEffect, useState } from "react"
 import { usePathname, useRouter } from "next/navigation"
 
 function AppLayout({ children }: { children: React.ReactNode }) {
-  const { setPseudo } = useAuthUser()
+  const { setPseudo, setRole } = useAuthUser()
   const pathname = usePathname()
   const router = useRouter()
   const isLoginPage = pathname === "/login"
@@ -24,19 +24,26 @@ function AppLayout({ children }: { children: React.ReactNode }) {
     fetch("/api/auth/me")
       .then((res) => {
         if (!res.ok) {
+          setPseudo(null)
+          setRole(null)
           router.replace("/login")
-        } else {
-          return res.json()
+          return null
         }
+        return res.json()
       })
       .then((data) => {
-        if (data?.pseudo) setPseudo(data.pseudo)
+        if (data?.pseudo) {
+          setPseudo(data.pseudo)
+          if (data.role === "SUPER_ADMIN" || data.role === "ADMIN") setRole(data.role)
+        }
         setAuthChecked(true)
       })
       .catch(() => {
+        setPseudo(null)
+        setRole(null)
         router.replace("/login")
       })
-  }, [isLoginPage, router, pathname, setPseudo])
+  }, [isLoginPage, router, pathname, setPseudo, setRole])
 
   if (isLoginPage) {
     return (

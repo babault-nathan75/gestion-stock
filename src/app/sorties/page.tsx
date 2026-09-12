@@ -29,7 +29,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Plus, ArrowUpFromLine, Trash2 } from "lucide-react"
+import { Plus, ArrowUpFromLine, Trash2, Pencil } from "lucide-react"
 import { format } from "date-fns"
 import { fr } from "date-fns/locale"
 import { toast } from "sonner"
@@ -63,13 +63,15 @@ export default function SortiesPage() {
   const router = useRouter()
   const isMobile = useIsMobile()
   const { warehouse: ctxWarehouse, warehouses } = useWarehouse()
-  const { pseudo } = useAuthUser()
+  const { pseudo, role } = useAuthUser()
   const [exits, setExits] = useState<StockExit[]>([])
   const [products, setProducts] = useState<Product[]>([])
   const [dialogProducts, setDialogProducts] = useState<ProductWithWarehouseQty[]>([])
   const [loading, setLoading] = useState(true)
   const [formOpen, setFormOpen] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const [editingBatch, setEditingBatch] = useState<BatchGroup | null>(null)
+  const [adminSaving, setAdminSaving] = useState(false)
 
   const [destination, setDestination] = useState("")
   const [recipient, setRecipient] = useState("")
@@ -80,6 +82,7 @@ export default function SortiesPage() {
     { key: crypto.randomUUID(), product_id: "", product_name: "", quantity: "", unit_price: "" },
   ])
   const requestIdRef = useRef(0)
+  const editingBatchRef = useRef<BatchGroup | null>(null)
 
   const loadDialogProducts = useCallback(async () => {
     const db = getSupabase()
@@ -96,11 +99,19 @@ export default function SortiesPage() {
             ...ps.products,
             warehouse_quantity: ps.quantity,
           })) as ProductWithWarehouseQty[]
+        const editing = editingBatchRef.current
+        if (editing) {
+          for (const line of editing.lines) {
+            if (mapped.some((p) => p.id === line.product_id)) continue
+            const prod = products.find((p) => p.id === line.product_id)
+            if (prod) mapped.push({ ...prod, warehouse_quantity: 0 })
+          }
+        }
         mapped.sort((a, b) => a.name.localeCompare(b.name))
         setDialogProducts(mapped)
       }
     } catch {}
-  }, [warehouse])
+  }, [warehouse, products])
 
   useEffect(() => {
     if (formOpen) loadDialogProducts()
@@ -164,7 +175,7 @@ export default function SortiesPage() {
     setLines([{ key: crypto.randomUUID(), product_id: "", product_name: "", quantity: "", unit_price: "" }])
   }
 
-  function handleClose() { resetForm(); setFormOpen(false) }
+  function handleClose() { resetForm(); editingBatchRef.current = null; setEditingBatch(null); setFormOpen(false) }
 
   function getStock(productId: string): number {
     return products.find((p) => p.id === productId)?.quantity || 0
@@ -176,6 +187,10 @@ export default function SortiesPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    if (editingBatch) {
+      await handleUpdate()
+      return
+    }
     if (!destination.trim()) { toast.error("La destination est requise"); return }
     if (!recipient.trim()) { toast.error("Le réceptionnaire est requis"); return }
     const validLines = lines.filter((l) => (l.product_id || l.product_name) && l.quantity && parseInt(l.quantity) > 0)
@@ -224,6 +239,84 @@ export default function SortiesPage() {
     return Array.from(map.values())
   }
 
+  function openEdit(group: BatchGroup) {
+    editingBatchRef.current = group
+    setEditingBatch(group)
+    setDestination(group.destination)
+    setRecipient(group.recipient)
+    setWarehouse(group.warehouse)
+    setDate(group.date)
+    setNotes(group.notes || "")
+    setLines(
+      group.lines.map((line) => ({
+        key: crypto.randomUUID(),
+        product_id: line.product_id,
+        product_name: (line.products as any)?.name || "",
+        quantity: String(line.quantity),
+        unit_price: String(line.unit_price),
+      }))
+    )
+    setFormOpen(true)
+  }
+
+  async function handleUpdate() {
+    if (!destination.trim()) { toast.error("La destination est requise"); return }
+    if (!recipient.trim()) { toast.error("Le réceptionnaire est requis"); return }
+    const validLines = lines.filter((l) => (l.product_id || l.product_name) && l.quantity && parseInt(l.quantity) > 0)
+    if (validLines.length === 0) { toast.error("Ajoutez au moins un produit avec une quantité"); return }
+    if (!editingBatch) return
+
+    setAdminSaving(true)
+    try {
+      const res = await fetch(`/api/movements/batch/${editingBatch.batch_id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "exit",
+          warehouse,
+          date,
+          notes,
+          destination: destination.trim(),
+          recipient: recipient.trim(),
+          lines: validLines.map((l) => ({
+            product_id: l.product_id,
+            product_name: l.product_name,
+            quantity: parseInt(l.quantity),
+            unit_price: parseFloat(l.unit_price) || 0,
+          })),
+        }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        toast.error(data.error || "Erreur lors de la modification")
+        return
+      }
+      toast.success("Sortie modifiée, stock réajusté")
+      handleClose()
+      loadData()
+    } catch {
+      toast.error("Erreur de réseau")
+    } finally {
+      setAdminSaving(false)
+    }
+  }
+
+  async function handleDelete(group: BatchGroup) {
+    if (!window.confirm(`Supprimer ce lot de sortie (${group.lines.length} produit(s)) ? Le stock sera réajusté.`)) return
+    try {
+      const res = await fetch(`/api/movements/batch/${group.batch_id}?type=exit`, { method: "DELETE" })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        toast.error(data.error || "Erreur lors de la suppression")
+        return
+      }
+      toast.success("Lot supprimé, stock réajusté")
+      loadData()
+    } catch {
+      toast.error("Erreur de réseau")
+    }
+  }
+
   const grouped = groupByBatch(exits)
 
   if (loading) {
@@ -262,9 +355,27 @@ export default function SortiesPage() {
                       {group.created_by && <p className="text-xs text-yellow-400">Créé par: {group.created_by}</p>}
                     </div>
                   </div>
-                  <Badge variant="secondary" className="bg-destructive/10 text-destructive shrink-0">
-                    {group.lines.length} produit{group.lines.length > 1 ? "s" : ""}
-                  </Badge>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Badge variant="secondary" className="bg-destructive/10 text-destructive">
+                      {group.lines.length} produit{group.lines.length > 1 ? "s" : ""}
+                    </Badge>
+                    {role === "SUPER_ADMIN" && (
+                      <>
+                        <Button variant="ghost" size="icon-sm" onClick={() => openEdit(group)} aria-label="Modifier le lot">
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          className="text-destructive hover:text-destructive"
+                          onClick={() => handleDelete(group)}
+                          aria-label="Supprimer le lot"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </>
+                    )}
+                  </div>
                 </div>
                 <div className="ml-13 space-y-1">
                   {group.lines.map((line) => (
@@ -296,8 +407,10 @@ export default function SortiesPage() {
         {/* Correction apportée ici : overflow-y-visible pour laisser le menu déroulant du combobox flotter proprement par-dessus */}
         <DialogContent className="w-[calc(100vw-2rem)] max-w-md max-h-[90vh] overflow-y-visible overflow-x-hidden p-4 sm:p-6 rounded-lg">
           <DialogHeader>
-            <DialogTitle>Nouvelle sortie</DialogTitle>
-            <DialogDescription>Expédier un ou plusieurs produits</DialogDescription>
+            <DialogTitle>{editingBatch ? "Modifier la sortie" : "Nouvelle sortie"}</DialogTitle>
+            <DialogDescription>
+              {editingBatch ? "Le stock sera réajusté automatiquement." : "Expédier un ou plusieurs produits"}
+            </DialogDescription>
           </DialogHeader>
 
           <form onSubmit={handleSubmit} className="space-y-4 max-h-[calc(90vh-120px)] overflow-y-auto px-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
@@ -427,8 +540,8 @@ export default function SortiesPage() {
               <Button type="button" variant="outline" onClick={handleClose} className="w-full sm:w-auto">
                 Annuler
               </Button>
-              <Button type="submit" disabled={submitting} className="w-full sm:w-auto">
-                {submitting ? "Enregistrement..." : "Enregistrer"}
+              <Button type="submit" disabled={submitting || adminSaving} className="w-full sm:w-auto">
+                {submitting || adminSaving ? "Enregistrement..." : editingBatch ? "Enregistrer les modifications" : "Enregistrer"}
               </Button>
             </DialogFooter>
           </form>

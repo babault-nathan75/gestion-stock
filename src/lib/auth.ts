@@ -1,10 +1,20 @@
+import { NextRequest } from "next/server"
+import { getSupabase } from "./supabase"
+
 const ALGO = { name: "HMAC", hash: "SHA-256" }
+
+export type Role = "SUPER_ADMIN" | "ADMIN"
+
+export interface SessionUser {
+  pseudo: string
+  role: Role
+}
 
 function getSecret(): Uint8Array {
   return new TextEncoder().encode(process.env.AUTH_SECRET || "")
 }
 
-function getUsers(): Record<string, string> {
+function getEnvUsers(): Record<string, string> {
   const raw = process.env.AUTH_USERS || ""
   const users: Record<string, string> = {}
   for (const part of raw.split(",")) {
@@ -14,13 +24,52 @@ function getUsers(): Record<string, string> {
   return users
 }
 
-export async function verifyUser(pseudo: string, password: string): Promise<boolean> {
-  const users = getUsers()
-  return users[pseudo] === password
+export async function hashPassword(password: string): Promise<string> {
+  const data = new TextEncoder().encode(password)
+  const digest = await crypto.subtle.digest("SHA-256", data)
+  return Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("")
 }
 
-export async function createSessionToken(pseudo: string): Promise<string> {
-  const payload = JSON.stringify({ u: pseudo, e: Date.now() + 24 * 60 * 60 * 1000 })
+export function getSuperAdminPseudo(): string {
+  return process.env.SUPER_ADMIN_PSEUDO || "super-admin"
+}
+
+export function isSuperAdminPassword(password: string): boolean {
+  const secret = process.env.SUPER_ADMIN_PASSWORD
+  return Boolean(secret) && password === secret
+}
+
+export async function verifyUser(pseudo: string, password: string): Promise<SessionUser | null> {
+  try {
+    const { data, error } = await getSupabase()
+      .from("admins")
+      .select("pseudo, password_hash, role")
+      .eq("pseudo", pseudo)
+      .maybeSingle()
+
+    if (!error && data) {
+      const hash = await hashPassword(password)
+      if (data.password_hash === hash) {
+        const role: Role = data.role === "SUPER_ADMIN" ? "SUPER_ADMIN" : "ADMIN"
+        return { pseudo: data.pseudo, role }
+      }
+      return null
+    }
+  } catch {
+    // Supabase non configuré : on retombe sur les comptes env
+  }
+
+  const envUsers = getEnvUsers()
+  if (envUsers[pseudo] === password) {
+    return { pseudo, role: "ADMIN" }
+  }
+  return null
+}
+
+export async function createSessionToken(pseudo: string, role: Role): Promise<string> {
+  const payload = JSON.stringify({ u: pseudo, r: role, e: Date.now() + 24 * 60 * 60 * 1000 })
   const data = btoa(payload)
 
   const key = await crypto.subtle.importKey("raw", getSecret().buffer as ArrayBuffer, ALGO, false, ["sign"])
@@ -30,7 +79,7 @@ export async function createSessionToken(pseudo: string): Promise<string> {
   return `${data}.${hex}`
 }
 
-export async function verifySessionToken(token: string): Promise<string | null> {
+export async function verifySessionToken(token: string): Promise<SessionUser | null> {
   try {
     const [data, hex] = token.split(".")
     if (!data || !hex) return null
@@ -43,8 +92,15 @@ export async function verifySessionToken(token: string): Promise<string | null> 
     const payload = JSON.parse(atob(data))
     if (payload.e < Date.now()) return null
 
-    return payload.u
+    const role: Role = payload.r === "SUPER_ADMIN" ? "SUPER_ADMIN" : "ADMIN"
+    return { pseudo: payload.u, role }
   } catch {
     return null
   }
+}
+
+export async function getSessionUser(request: NextRequest): Promise<SessionUser | null> {
+  const session = request.cookies.get("session")?.value
+  if (!session) return null
+  return verifySessionToken(session)
 }

@@ -4,6 +4,10 @@ export const FALLBACK_WAREHOUSES = ["Abidjan", "Sinfra"] as const
 
 let cache: string[] | null = null
 
+export function invalidateWarehouses() {
+  cache = null
+}
+
 export async function getWarehouses(): Promise<string[]> {
   if (cache) return cache
 

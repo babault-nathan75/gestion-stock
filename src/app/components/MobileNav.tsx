@@ -2,8 +2,9 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Package, LayoutDashboard, ArrowDownToLine, ArrowUpFromLine, Tag } from "lucide-react"
+import { Package, LayoutDashboard, ArrowDownToLine, ArrowUpFromLine, Tag, Shield } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { useAuthUser } from "@/lib/auth-context"
 
 const navItems = [
   { href: "/", label: "Stock", icon: LayoutDashboard },
@@ -13,13 +14,18 @@ const navItems = [
   { href: "/sorties", label: "Sorties", icon: ArrowUpFromLine },
 ]
 
+const adminItem = { href: "/admin", label: "Admin", icon: Shield }
+
 export function MobileNav() {
   const pathname = usePathname()
+  const { role } = useAuthUser()
+
+  const items = role === "SUPER_ADMIN" ? [...navItems, adminItem] : navItems
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-background/95 backdrop-blur-lg md:hidden">
       <div className="mx-auto flex max-w-lg items-center justify-around py-2">
-        {navItems.map((item) => {
+        {items.map((item) => {
           const isActive = pathname === item.href
           const Icon = item.icon
           return (

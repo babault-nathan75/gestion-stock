@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { usePathname } from "next/navigation"
-import { Package, LayoutDashboard, ArrowDownToLine, ArrowUpFromLine, Tag, Warehouse, LogOut, User } from "lucide-react"
+import { Package, LayoutDashboard, ArrowDownToLine, ArrowUpFromLine, Tag, Warehouse, LogOut, User, Shield } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useWarehouse } from "@/lib/warehouse-context"
 import { useAuthUser } from "@/lib/auth-context"
@@ -20,7 +20,7 @@ export function DesktopSidebar() {
   const router = useRouter()
   const pathname = usePathname()
   const { warehouse, setWarehouse, warehouses } = useWarehouse()
-  const { pseudo } = useAuthUser()
+  const { pseudo, role } = useAuthUser()
 
   const options = [
     { value: "all", label: "Tous les entrepôts" },
@@ -60,6 +60,23 @@ return (
           )
         })}
       </nav>
+
+      {role === "SUPER_ADMIN" && (
+        <div className="border-t border-neutral-800 px-3 py-3">
+          <Link
+            href="/admin"
+            className={cn(
+              "flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
+              pathname.startsWith("/admin")
+                ? "bg-yellow-500/10 text-yellow-400 border border-yellow-500/20"
+                : "text-neutral-400 hover:text-white hover:bg-neutral-800"
+            )}
+          >
+            <Shield className="h-5 w-5 shrink-0" />
+            <span>Administration</span>
+          </Link>
+        </div>
+      )}
 
       <div className="border-t border-neutral-800 px-3 py-4">
         <div className="flex items-center gap-2 px-3 mb-2">

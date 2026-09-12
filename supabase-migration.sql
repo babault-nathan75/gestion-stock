@@ -164,3 +164,22 @@ ON CONFLICT (product_id, warehouse) DO NOTHING;
 CREATE INDEX IF NOT EXISTS idx_stock_entries_warehouse ON stock_entries(warehouse);
 CREATE INDEX IF NOT EXISTS idx_stock_exits_warehouse ON stock_exits(warehouse);
 CREATE INDEX IF NOT EXISTS idx_product_stock_warehouse ON product_stock(warehouse);
+
+-- ============================================
+-- COMPTES ADMINISTRATEURS (super-admin)
+-- ============================================
+CREATE TABLE IF NOT EXISTS admins (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  pseudo TEXT NOT NULL UNIQUE,
+  password_hash TEXT NOT NULL,
+  role TEXT NOT NULL DEFAULT 'ADMIN' CHECK (role IN ('SUPER_ADMIN', 'ADMIN')),
+  created_by TEXT,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE admins ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow all on admins" ON admins FOR ALL USING (true) WITH CHECK (true);
+
+-- Le super-admin (mot de passe uniquement, stocké dans les variables d'environnement)
+-- est vérifié par l'application : AUTH_SECRET, SUPER_ADMIN_PASSWORD, SUPER_ADMIN_PSEUDO
+-- Les comptes ci-dessus en base sont créés via /admin/users (rôle SUPER_ADMIN requis).

@@ -71,6 +71,7 @@ export default function ProduitsPage() {
   const [detailProduct, setDetailProduct] = useState<Product | null>(null)
   const [detailEntries, setDetailEntries] = useState<StockEntry[]>([])
   const [detailExits, setDetailExits] = useState<StockExit[]>([])
+  const [detailWarehouseStock, setDetailWarehouseStock] = useState<{ warehouse: string; quantity: number }[]>([])
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false)
   const [bulkDeleting, setBulkDeleting] = useState(false)
@@ -132,12 +133,18 @@ export default function ProduitsPage() {
     setDetailProduct(product)
     try {
       const db = getSupabase()
-      const [entriesRes, exitsRes] = await Promise.all([
+      const [entriesRes, exitsRes, stockRes] = await Promise.all([
         db.from("stock_entries").select("*").eq("product_id", product.id).order("date", { ascending: false }).limit(20),
         db.from("stock_exits").select("*").eq("product_id", product.id).order("date", { ascending: false }).limit(20),
+        db.from("product_stock").select("warehouse, quantity").eq("product_id", product.id).gt("quantity", 0),
       ])
       if (entriesRes.data) setDetailEntries(entriesRes.data)
       if (exitsRes.data) setDetailExits(exitsRes.data)
+      if (stockRes.data) {
+        const sorted = stockRes.data
+          .sort((a: { warehouse: string; quantity: number }, b: { warehouse: string; quantity: number }) => b.quantity - a.quantity)
+        setDetailWarehouseStock(sorted)
+      }
     } catch {}
   }
 
@@ -442,7 +449,7 @@ export default function ProduitsPage() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={!!detailProduct} onOpenChange={() => { setDetailProduct(null); setDetailEntries([]); setDetailExits([]) }}>
+      <Dialog open={!!detailProduct} onOpenChange={() => { setDetailProduct(null); setDetailEntries([]); setDetailExits([]); setDetailWarehouseStock([]) }}>
         <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
           {detailProduct && (
             <>
@@ -454,7 +461,7 @@ export default function ProduitsPage() {
                 <div className="grid grid-cols-3 gap-2 text-center">
                   <div className="rounded-lg bg-muted p-2">
                     <p className="text-lg font-bold">{(detailProduct as any).warehouse_quantity ?? detailProduct.quantity}</p>
-                    <p className="text-xs text-muted-foreground">Stock</p>
+                    <p className="text-xs text-muted-foreground">Stock total</p>
                   </div>
                   <div className="rounded-lg bg-muted p-2">
                     <p className="text-lg font-bold">{detailProduct.price.toLocaleString("fr-FR")}</p>
@@ -465,6 +472,24 @@ export default function ProduitsPage() {
                     <p className="text-xs text-muted-foreground">Valeur (Fcfa)</p>
                   </div>
                 </div>
+
+                {detailWarehouseStock.length > 0 && (
+                  <div className="space-y-2">
+                    <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Stock par entrepôt</h3>
+                    <div className="rounded-lg border divide-y">
+                      {detailWarehouseStock.map((ws) => (
+                        <div key={ws.warehouse} className="flex items-center justify-between px-3 py-2">
+                          <span className="text-sm font-medium">{ws.warehouse}</span>
+                          <div className="flex items-center gap-3 text-sm">
+                            <span className="text-muted-foreground">Qté: {ws.quantity}</span>
+                            <span className="font-medium">{(ws.quantity * detailProduct.price).toLocaleString("fr-FR")} Fcfa</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {detailEntries.length > 0 && (
                   <div className="space-y-2">
                     <h3 className="text-sm font-semibold flex items-center gap-1"><ArrowDownToLine className="h-4 w-4 text-success" /> Entrées récentes</h3>

@@ -18,6 +18,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog"
 import { ArrowLeft, Plus, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 
@@ -39,6 +47,8 @@ export default function NouvelleSortiePage() {
   const { pseudo } = useAuthUser()
   const [products, setProducts] = useState<ProductWithWarehouseQty[]>([])
   const [submitting, setSubmitting] = useState(false)
+  const [duplicateWarning, setDuplicateWarning] = useState<string | null>(null)
+  const [pendingSubmit, setPendingSubmit] = useState<(() => void) | null>(null)
 
   const [destination, setDestination] = useState("")
   const [recipient, setRecipient] = useState("")
@@ -95,6 +105,48 @@ export default function NouvelleSortiePage() {
     return products.find((p) => p.id === productId)?.warehouse_quantity || 0
   }
 
+  async function checkForDuplicate(): Promise<string | null> {
+    try {
+      const db = getSupabase()
+      const { data } = await db
+        .from("stock_exits")
+        .select("id, batch_id, created_by")
+        .eq("date", date)
+        .eq("warehouse", warehouse)
+        .eq("destination", destination.trim())
+        .limit(1)
+      if (data && data.length > 0) {
+        return `Une sortie similaire existe déjà pour cette date (${date}), cet entrepôt (${warehouse}) et cette destination (${destination.trim()}). Voulez-vous quand même créer cette sortie ?`
+      }
+    } catch {}
+    return null
+  }
+
+  async function doSubmit() {
+    setSubmitting(true)
+    const db = getSupabase()
+    const batchId = crypto.randomUUID()
+    const rows: any[] = []
+    const validLines = lines.filter((l) => (l.product_id || l.product_name) && l.quantity && parseInt(l.quantity) > 0)
+
+    for (const line of validLines) {
+      let productId = line.product_id
+      if (productId === "__new__") {
+        const price = parseFloat(line.unit_price) || 0
+        const { data: newProduct, error: createError } = await db.from("products").insert({ name: line.product_name.trim(), quantity: 0, price }).select("id").single()
+        if (createError) { toast.error(`Erreur création "${line.product_name}": ${createError.message}`); setSubmitting(false); return }
+        productId = newProduct.id
+      }
+      rows.push({ batch_id: batchId, product_id: productId, quantity: parseInt(line.quantity), unit_price: parseFloat(line.unit_price) || 0, warehouse, destination: destination.trim(), recipient: recipient.trim(), date, notes: notes.trim() || null, created_by: pseudo || null })
+    }
+
+    const { error } = await db.from("stock_exits").insert(rows)
+    if (error) { toast.error(`Erreur: ${error.message}`); setSubmitting(false); return }
+    toast.success(`${validLines.length} produit${validLines.length > 1 ? "s" : ""} expédié${validLines.length > 1 ? "s" : ""}`)
+    setSubmitting(false)
+    router.push("/sorties")
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!destination.trim()) { toast.error("La destination est requise"); return }
@@ -113,27 +165,14 @@ export default function NouvelleSortiePage() {
       }
     }
 
-    setSubmitting(true)
-    const db = getSupabase()
-    const batchId = crypto.randomUUID()
-    const rows: any[] = []
-
-    for (const line of validLines) {
-      let productId = line.product_id
-      if (productId === "__new__") {
-        const price = parseFloat(line.unit_price) || 0
-        const { data: newProduct, error: createError } = await db.from("products").insert({ name: line.product_name.trim(), quantity: 0, price }).select("id").single()
-        if (createError) { toast.error(`Erreur création "${line.product_name}": ${createError.message}`); setSubmitting(false); return }
-        productId = newProduct.id
-      }
-      rows.push({ batch_id: batchId, product_id: productId, quantity: parseInt(line.quantity), unit_price: parseFloat(line.unit_price) || 0, warehouse, destination: destination.trim(), recipient: recipient.trim(), date, notes: notes.trim() || null, created_by: pseudo || null })
+    const warning = await checkForDuplicate()
+    if (warning) {
+      setDuplicateWarning(warning)
+      setPendingSubmit(() => doSubmit)
+      return
     }
 
-    const { error } = await db.from("stock_exits").insert(rows)
-    if (error) { toast.error(`Erreur: ${error.message}`); setSubmitting(false); return }
-    toast.success(`${validLines.length} produit${validLines.length > 1 ? "s" : ""} expédié${validLines.length > 1 ? "s" : ""}`)
-    setSubmitting(false)
-    router.push("/sorties")
+    await doSubmit()
   }
 
   return (
@@ -259,6 +298,19 @@ export default function NouvelleSortiePage() {
           </div>
         </form>
       </div>
+
+      <Dialog open={!!duplicateWarning} onOpenChange={() => { setDuplicateWarning(null); setPendingSubmit(null) }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Doublon détecté</DialogTitle>
+            <DialogDescription>{duplicateWarning}</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setDuplicateWarning(null); setPendingSubmit(null) }}>Annuler</Button>
+            <Button onClick={() => { setDuplicateWarning(null); pendingSubmit?.(); setPendingSubmit(null) }}>Poursuivre</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

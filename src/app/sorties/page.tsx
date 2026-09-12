@@ -72,6 +72,8 @@ export default function SortiesPage() {
   const [submitting, setSubmitting] = useState(false)
   const [editingBatch, setEditingBatch] = useState<BatchGroup | null>(null)
   const [adminSaving, setAdminSaving] = useState(false)
+  const [duplicateWarning, setDuplicateWarning] = useState<string | null>(null)
+  const [pendingSubmit, setPendingSubmit] = useState<(() => void) | null>(null)
 
   const [destination, setDestination] = useState("")
   const [recipient, setRecipient] = useState("")
@@ -185,6 +187,47 @@ export default function SortiesPage() {
     return dialogProducts.find((p) => p.id === productId)?.warehouse_quantity || 0
   }
 
+  async function checkForDuplicate(): Promise<string | null> {
+    try {
+      const db = getSupabase()
+      const { data } = await db
+        .from("stock_exits")
+        .select("id, batch_id, created_by")
+        .eq("date", date)
+        .eq("warehouse", warehouse)
+        .eq("destination", destination.trim())
+        .limit(1)
+      if (data && data.length > 0) {
+        return `Une sortie similaire existe déjà pour cette date (${date}), cet entrepôt (${warehouse}) et cette destination (${destination.trim()}). Voulez-vous quand même créer cette sortie ?`
+      }
+    } catch {}
+    return null
+  }
+
+  async function doSubmit() {
+    setSubmitting(true)
+    const db = getSupabase()
+    const batchId = crypto.randomUUID()
+    const rows: any[] = []
+    const validLines = lines.filter((l) => (l.product_id || l.product_name) && l.quantity && parseInt(l.quantity) > 0)
+
+    for (const line of validLines) {
+      let productId = line.product_id
+      if (productId === "__new__") {
+        const price = parseFloat(line.unit_price) || 0
+        const { data: newProduct, error: createError } = await db.from("products").insert({ name: line.product_name.trim(), quantity: 0, price }).select("id").single()
+        if (createError) { toast.error(`Erreur création "${line.product_name}": ${createError.message}`); setSubmitting(false); return }
+        productId = newProduct.id
+      }
+      rows.push({ batch_id: batchId, product_id: productId, quantity: parseInt(line.quantity), unit_price: parseFloat(line.unit_price) || 0, warehouse, destination: destination.trim(), recipient: recipient.trim(), date, notes: notes.trim() || null, created_by: pseudo || null })
+    }
+
+    const { error } = await db.from("stock_exits").insert(rows)
+    if (error) { console.error("Stock exits insert error:", error, rows); toast.error(`Erreur: ${error.message}`); setSubmitting(false); return }
+    toast.success(`${validLines.length} produit${validLines.length > 1 ? "s" : ""} expédié${validLines.length > 1 ? "s" : ""}`)
+    resetForm(); setSubmitting(false); setFormOpen(false); loadData()
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (editingBatch) {
@@ -207,26 +250,14 @@ export default function SortiesPage() {
       }
     }
 
-    setSubmitting(true)
-    const db = getSupabase()
-    const batchId = crypto.randomUUID()
-    const rows: any[] = []
-
-    for (const line of validLines) {
-      let productId = line.product_id
-      if (productId === "__new__") {
-        const price = parseFloat(line.unit_price) || 0
-        const { data: newProduct, error: createError } = await db.from("products").insert({ name: line.product_name.trim(), quantity: 0, price }).select("id").single()
-        if (createError) { toast.error(`Erreur création "${line.product_name}": ${createError.message}`); setSubmitting(false); return }
-        productId = newProduct.id
-      }
-      rows.push({ batch_id: batchId, product_id: productId, quantity: parseInt(line.quantity), unit_price: parseFloat(line.unit_price) || 0, warehouse, destination: destination.trim(), recipient: recipient.trim(), date, notes: notes.trim() || null, created_by: pseudo || null })
+    const warning = await checkForDuplicate()
+    if (warning) {
+      setDuplicateWarning(warning)
+      setPendingSubmit(() => doSubmit)
+      return
     }
 
-    const { error } = await db.from("stock_exits").insert(rows)
-    if (error) { console.error("Stock exits insert error:", error, rows); toast.error(`Erreur: ${error.message}`); setSubmitting(false); return }
-    toast.success(`${validLines.length} produit${validLines.length > 1 ? "s" : ""} expédié${validLines.length > 1 ? "s" : ""}`)
-    resetForm(); setSubmitting(false); setFormOpen(false); loadData()
+    await doSubmit()
   }
 
   function groupByBatch(items: StockExit[]): BatchGroup[] {
@@ -545,6 +576,19 @@ export default function SortiesPage() {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!duplicateWarning} onOpenChange={() => { setDuplicateWarning(null); setPendingSubmit(null) }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Doublon détecté</DialogTitle>
+            <DialogDescription>{duplicateWarning}</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setDuplicateWarning(null); setPendingSubmit(null) }}>Annuler</Button>
+            <Button onClick={() => { setDuplicateWarning(null); pendingSubmit?.(); setPendingSubmit(null) }}>Poursuivre</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

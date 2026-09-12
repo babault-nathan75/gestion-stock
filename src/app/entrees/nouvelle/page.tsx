@@ -18,6 +18,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog"
 import { ArrowLeft, Plus, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 
@@ -39,6 +47,8 @@ export default function NouvelleEntreePage() {
   const { pseudo } = useAuthUser()
   const [products, setProducts] = useState<ProductWithWarehouseQty[]>([])
   const [submitting, setSubmitting] = useState(false)
+  const [duplicateWarning, setDuplicateWarning] = useState<string | null>(null)
+  const [pendingSubmit, setPendingSubmit] = useState<(() => void) | null>(null)
 
   const [origin, setOrigin] = useState("")
   const [warehouse, setWarehouse] = useState(ctxWarehouse === "all" ? (warehouses[0] ?? "Abidjan") : ctxWarehouse)
@@ -94,16 +104,29 @@ export default function NouvelleEntreePage() {
     return products.find((p) => p.id === productId)?.warehouse_quantity || 0
   }
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    if (!origin.trim()) { toast.error("La provenance est requise"); return }
-    const validLines = lines.filter((l) => (l.product_id || l.product_name) && l.quantity && parseInt(l.quantity) > 0)
-    if (validLines.length === 0) { toast.error("Ajoutez au moins un produit avec une quantité"); return }
+  async function checkForDuplicate(): Promise<string | null> {
+    try {
+      const db = getSupabase()
+      const { data } = await db
+        .from("stock_entries")
+        .select("id, batch_id, created_by")
+        .eq("date", date)
+        .eq("warehouse", warehouse)
+        .eq("origin", origin.trim())
+        .limit(1)
+      if (data && data.length > 0) {
+        return `Une entrée similaire existe déjà pour cette date (${date}), cet entrepôt (${warehouse}) et cette provenance (${origin.trim()}). Voulez-vous quand même créer cette entrée ?`
+      }
+    } catch {}
+    return null
+  }
 
+  async function doSubmit() {
     setSubmitting(true)
     const db = getSupabase()
     const batchId = crypto.randomUUID()
     const rows: any[] = []
+    const validLines = lines.filter((l) => (l.product_id || l.product_name) && l.quantity && parseInt(l.quantity) > 0)
 
     for (const line of validLines) {
       let productId = line.product_id
@@ -121,6 +144,22 @@ export default function NouvelleEntreePage() {
     toast.success(`${validLines.length} produit${validLines.length > 1 ? "s" : ""} enregistré${validLines.length > 1 ? "s" : ""}`)
     setSubmitting(false)
     router.push("/entrees")
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!origin.trim()) { toast.error("La provenance est requise"); return }
+    const validLines = lines.filter((l) => (l.product_id || l.product_name) && l.quantity && parseInt(l.quantity) > 0)
+    if (validLines.length === 0) { toast.error("Ajoutez au moins un produit avec une quantité"); return }
+
+    const warning = await checkForDuplicate()
+    if (warning) {
+      setDuplicateWarning(warning)
+      setPendingSubmit(() => doSubmit)
+      return
+    }
+
+    await doSubmit()
   }
 
   return (
@@ -239,6 +278,19 @@ export default function NouvelleEntreePage() {
           </div>
         </form>
       </div>
+
+      <Dialog open={!!duplicateWarning} onOpenChange={() => { setDuplicateWarning(null); setPendingSubmit(null) }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Doublon détecté</DialogTitle>
+            <DialogDescription>{duplicateWarning}</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setDuplicateWarning(null); setPendingSubmit(null) }}>Annuler</Button>
+            <Button onClick={() => { setDuplicateWarning(null); pendingSubmit?.(); setPendingSubmit(null) }}>Poursuivre</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

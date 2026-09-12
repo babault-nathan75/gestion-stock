@@ -366,7 +366,7 @@ export default function ProduitsPage() {
                     )}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <p className="font-medium truncate">{product.name}</p>
+                        <p className="font-medium truncate uppercase">{product.name}</p>
                         {qty <= (product.alert_threshold || 5) && (
                           <Badge variant={qty === 0 ? "destructive" : "secondary"} className="text-xs shrink-0">
                             {qty === 0 ? "Rupture" : "Bas"}
@@ -385,8 +385,6 @@ export default function ProduitsPage() {
                         )}
                         <span>·</span>
                         <span className="font-medium">{(qty * product.price).toLocaleString("fr-FR")} Fcfa</span>
-                        {product.created_by && <span>·</span>}
-                        {product.created_by && <span className="text-yellow-400">Créé par: {product.created_by}</span>}
                       </div>
                     </div>
                   </div>
@@ -454,7 +452,7 @@ export default function ProduitsPage() {
           {detailProduct && (
             <>
               <DialogHeader>
-                <DialogTitle>{detailProduct.name}</DialogTitle>
+                <DialogTitle className="uppercase">{detailProduct.name}</DialogTitle>
                 <DialogDescription>{detailProduct.category || "Sans catégorie"} · Seuil: {detailProduct.alert_threshold || 5}</DialogDescription>
               </DialogHeader>
               <div className="space-y-3">
@@ -472,6 +470,10 @@ export default function ProduitsPage() {
                     <p className="text-xs text-muted-foreground">Valeur (Fcfa)</p>
                   </div>
                 </div>
+
+                {detailProduct.created_by && (
+                  <p className="text-xs text-muted-foreground">Créé par: <span className="text-yellow-400">{detailProduct.created_by}</span></p>
+                )}
 
                 {detailWarehouseStock.length > 0 && (
                   <div className="space-y-2">

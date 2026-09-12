@@ -394,7 +394,7 @@ export default function EntreesPage() {
                 <div className="ml-13 space-y-1">
                   {group.lines.map((line) => (
                     <div key={line.id} className="flex items-center justify-between text-sm">
-                      <span>{(line.products as any)?.name || "Produit supprimé"}</span>
+                      <span className="uppercase">{(line.products as any)?.name || "Produit supprimé"}</span>
                       <div className="flex items-center gap-2">
                         {line.unit_price > 0 && <span className="text-xs text-muted-foreground">{line.unit_price.toLocaleString("fr-FR")} Fcfa</span>}
                         <span className="font-medium text-success">+{line.quantity}</span>

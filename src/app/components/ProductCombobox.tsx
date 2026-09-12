@@ -67,7 +67,7 @@ export function ProductCombobox({
     onValueChange(product.id, product.name)
     setSheetOpen(false)
     setSearch("")
-    toast.success(`${product.name} sélectionné`)
+    toast.success(`${product.name.toUpperCase()} sélectionné`)
   }
 
   function clearSelection(e: React.MouseEvent) {
@@ -137,7 +137,7 @@ export function ProductCombobox({
           onClick={() => setSheetOpen(true)}
         >
           <Check className="h-4 w-4 text-primary shrink-0" />
-          <span className="flex-1 font-medium">{selectedProduct.name}</span>
+          <span className="flex-1 font-medium uppercase">{selectedProduct.name}</span>
           {showStock && (
             <Badge variant="secondary" className="text-xs shrink-0">
               {selectedProduct.quantity}
@@ -232,7 +232,7 @@ export function ProductCombobox({
                   )}
                   onClick={(e) => handleItemClick(e, () => selectProduct(product))}
                 >
-                  <span className="truncate">{product.name}</span>
+                  <span className="truncate uppercase">{product.name}</span>
                   {showStock && (
                     <Badge variant="secondary" className="text-xs shrink-0 ml-2">
                       {product.quantity}

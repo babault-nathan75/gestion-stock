@@ -345,7 +345,7 @@ export default function DashboardPage() {
                     <div key={p.id} className="flex items-center justify-between text-sm py-1 border-b border-neutral-800/50 last:border-0">
                       <div className="flex items-center gap-2">
                         <span className="text-xs font-bold text-yellow-500 w-4">{i + 1}</span>
-                        <span className="text-white">{p.name}</span>
+                        <span className="text-white uppercase">{p.name}</span>
                       </div>
                       <span className="font-medium text-yellow-400">{(p.quantity * p.price).toLocaleString("fr-FR")} Fcfa</span>
                     </div>
@@ -371,7 +371,7 @@ export default function DashboardPage() {
                   <Card key={product.id} className="bg-neutral-900 border-neutral-800">
                     <CardContent className="flex items-center justify-between p-3">
                       <div>
-                        <p className="font-medium text-white">{product.name}</p>
+                        <p className="font-medium text-white uppercase">{product.name}</p>
                         <p className="text-xs text-neutral-400">
                           {product.category || "Sans catégorie"} · Seuil: {product.alert_threshold || 5} · {(product.quantity * product.price).toLocaleString("fr-FR")} Fcfa
                         </p>

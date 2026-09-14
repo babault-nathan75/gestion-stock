@@ -8,6 +8,7 @@ import { DesktopSidebar } from "./DesktopSidebar"
 import { Toaster } from "sonner"
 import { useEffect, useState } from "react"
 import { usePathname, useRouter } from "next/navigation"
+import { DotLottieReact } from "@lottiefiles/dotlottie-react"
 
 function AppLayout({ children }: { children: React.ReactNode }) {
   const { setPseudo, setRole } = useAuthUser()
@@ -56,8 +57,13 @@ function AppLayout({ children }: { children: React.ReactNode }) {
 
   if (!authChecked) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+      <div className="min-h-screen flex flex-col items-center justify-center bg-background gap-4">
+        <DotLottieReact
+          src="https://lottie.host/f6025aed-8451-4330-a5d6-30667ed6c793/DBsncsWns3.json"
+          loop
+          autoplay
+          style={{ width: 160, height: 160 }}
+        />
       </div>
     )
   }

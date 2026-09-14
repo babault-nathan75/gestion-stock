@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react"
 import { getSupabase } from "@/lib/supabase"
 import { useWarehouse } from "@/lib/warehouse-context"
 import type { Product, Category, ProductStock } from "@/lib/types"
+import type { Role } from "@/lib/auth-context"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -31,9 +32,10 @@ interface ProductFormProps {
   product?: Product | null
   onSave: () => void
   createdBy?: string | null
+  role?: Role | null
 }
 
-export function ProductForm({ open, onOpenChange, product, onSave, createdBy }: ProductFormProps) {
+export function ProductForm({ open, onOpenChange, product, onSave, createdBy, role }: ProductFormProps) {
   const { warehouse: ctxWarehouse, warehouses } = useWarehouse()
   const [name, setName] = useState("")
   const [category, setCategory] = useState("")
@@ -46,6 +48,7 @@ export function ProductForm({ open, onOpenChange, product, onSave, createdBy }: 
   const [warehouseStock, setWarehouseStock] = useState<ProductStock[]>([])
 
   const isEditing = !!product
+  const canEditQuantity = isEditing && role === "SUPER_ADMIN"
 
   const warehouseRef = useRef(ctxWarehouse === "all" ? (warehouses[0] ?? "Abidjan") : ctxWarehouse)
   warehouseRef.current = ctxWarehouse === "all" ? (warehouses[0] ?? "Abidjan") : ctxWarehouse
@@ -106,19 +109,32 @@ export function ProductForm({ open, onOpenChange, product, onSave, createdBy }: 
     const db = getSupabase()
 
     if (isEditing) {
+      const updates: Record<string, any> = {
+        name: name.trim(),
+        category: category === "__none__" ? null : category,
+        price: parseFloat(price) || 0,
+        alert_threshold: parseInt(alertThreshold) || 5,
+      }
+      if (canEditQuantity) {
+        updates.quantity = qty
+      }
       const { error } = await db
         .from("products")
-        .update({
-          name: name.trim(),
-          category: category === "__none__" ? null : category,
-          price: parseFloat(price) || 0,
-          alert_threshold: parseInt(alertThreshold) || 5,
-        })
+        .update(updates)
         .eq("id", product!.id)
       if (error) {
         toast.error(`Erreur modification: ${error.message}`)
         setLoading(false)
         return
+      }
+      if (canEditQuantity) {
+        for (const ws of warehouseStock) {
+          await db
+            .from("product_stock")
+            .update({ quantity: qty })
+            .eq("product_id", product!.id)
+            .eq("warehouse", ws.warehouse)
+        }
       }
       toast.success("Produit modifié")
     } else {
@@ -214,15 +230,18 @@ export function ProductForm({ open, onOpenChange, product, onSave, createdBy }: 
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="quantity">Stock initial</Label>
+              <Label htmlFor="quantity">{isEditing ? (canEditQuantity ? "Quantité (total)" : "Stock total") : "Stock initial"}</Label>
               <Input
                 id="quantity"
                 type="number"
                 min="0"
                 value={quantity}
                 onChange={(e) => setQuantity(e.target.value)}
-                disabled={isEditing}
+                disabled={!canEditQuantity}
               />
+              {isEditing && !canEditQuantity && (
+                <p className="text-xs text-muted-foreground">Seul le super-admin peut modifier la quantité</p>
+              )}
             </div>
           </div>
 

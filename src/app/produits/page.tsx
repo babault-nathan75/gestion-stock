@@ -56,7 +56,7 @@ export default function ProduitsPage() {
   const router = useRouter()
   const isMobile = useIsMobile()
   const { warehouse } = useWarehouse()
-  const { pseudo } = useAuthUser()
+  const { pseudo, role } = useAuthUser()
   const [products, setProducts] = useState<ProductWithWarehouseQty[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState("")
@@ -411,7 +411,7 @@ export default function ProduitsPage() {
         <Plus className="h-6 w-6" />
       </Button>
 
-      <ProductForm open={formOpen} onOpenChange={handleFormClose} product={editingProduct} onSave={loadProducts} createdBy={pseudo} />
+      <ProductForm open={formOpen} onOpenChange={handleFormClose} product={editingProduct} onSave={loadProducts} createdBy={pseudo} role={role} />
 
       <Dialog open={!!deleteProduct} onOpenChange={() => setDeleteProduct(null)}>
         <DialogContent>

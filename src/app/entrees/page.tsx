@@ -91,7 +91,6 @@ export default function EntreesPage() {
         .from("product_stock")
         .select("*, products(*)")
         .eq("warehouse", warehouse)
-        .gt("quantity", 0)
       if (data) {
         const mapped = data
           .filter((ps: any) => ps.products)
@@ -190,15 +189,21 @@ export default function EntreesPage() {
   async function checkForDuplicate(): Promise<string | null> {
     try {
       const db = getSupabase()
-      const { data } = await db
-        .from("stock_entries")
-        .select("id, batch_id, created_by")
-        .eq("date", date)
-        .eq("warehouse", warehouse)
-        .eq("origin", origin.trim())
-        .limit(1)
-      if (data && data.length > 0) {
-        return `Une entrée similaire existe déjà pour cette date (${date}), cet entrepôt (${warehouse}) et cette provenance (${origin.trim()}). Voulez-vous quand même créer cette entrée ?`
+      const validLines = lines.filter((l) => l.product_id && l.product_id !== "__new__" && l.quantity && parseInt(l.quantity) > 0)
+      const thirtySecsAgo = new Date(Date.now() - 30000).toISOString()
+
+      for (const line of validLines) {
+        const { data } = await db
+          .from("stock_entries")
+          .select("id, product_id, created_at")
+          .eq("product_id", line.product_id)
+          .eq("origin", origin.trim())
+          .gte("created_at", thirtySecsAgo)
+          .limit(1)
+        if (data && data.length > 0) {
+          const p = products.find((p) => p.id === line.product_id)
+          return `Le produit "${(p?.name || line.product_name || "").toUpperCase()}" a déjà été enregistré avec la provenance "${origin.trim().toUpperCase()}" il y a moins de 30 secondes. Voulez-vous quand même créer cette entrée ?`
+        }
       }
     } catch {}
     return null

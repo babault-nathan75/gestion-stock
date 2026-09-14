@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label"
 import { PinInput } from "@/components/ui/pin-input"
 import { useAuthUser } from "@/lib/auth-context"
 import { toast } from "sonner"
+import { DotLottieReact } from "@lottiefiles/dotlottie-react"
 
 export default function LoginPage() {
   const router = useRouter()
@@ -72,6 +73,17 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
+      {loading && (
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm">
+          <DotLottieReact
+            src="https://lottie.host/f6025aed-8451-4330-a5d6-30667ed6c793/DBsncsWns3.json"
+            loop
+            autoplay
+            style={{ width: 160, height: 160 }}
+          />
+          <p className="mt-3 text-sm text-yellow-500 uppercase tracking-widest">Connexion...</p>
+        </div>
+      )}
       <div className="w-full max-w-sm space-y-8 animate-fade-in">
         <div className="text-center space-y-2">
           <img src="/Gestock_favicon_2-removebg-preview.png" alt="GESTOCK" className="h-16 w-16 mx-auto object-contain" />

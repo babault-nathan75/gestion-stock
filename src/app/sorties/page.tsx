@@ -190,15 +190,21 @@ export default function SortiesPage() {
   async function checkForDuplicate(): Promise<string | null> {
     try {
       const db = getSupabase()
-      const { data } = await db
-        .from("stock_exits")
-        .select("id, batch_id, created_by")
-        .eq("date", date)
-        .eq("warehouse", warehouse)
-        .eq("destination", destination.trim())
-        .limit(1)
-      if (data && data.length > 0) {
-        return `Une sortie similaire existe déjà pour cette date (${date}), cet entrepôt (${warehouse}) et cette destination (${destination.trim()}). Voulez-vous quand même créer cette sortie ?`
+      const validLines = lines.filter((l) => l.product_id && l.product_id !== "__new__" && l.quantity && parseInt(l.quantity) > 0)
+      const thirtySecsAgo = new Date(Date.now() - 30000).toISOString()
+
+      for (const line of validLines) {
+        const { data } = await db
+          .from("stock_exits")
+          .select("id, product_id, created_at")
+          .eq("product_id", line.product_id)
+          .eq("destination", destination.trim())
+          .gte("created_at", thirtySecsAgo)
+          .limit(1)
+        if (data && data.length > 0) {
+          const p = products.find((p) => p.id === line.product_id)
+          return `Le produit "${(p?.name || line.product_name || "").toUpperCase()}" a déjà été expédié avec la destination "${destination.trim().toUpperCase()}" il y a moins de 30 secondes. Voulez-vous quand même créer cette sortie ?`
+        }
       }
     } catch {}
     return null

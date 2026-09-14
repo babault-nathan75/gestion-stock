@@ -1,13 +1,14 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { DotLottieReact } from "@lottiefiles/dotlottie-react"
 
 export function AppLoader() {
   const [phase, setPhase] = useState<"show" | "fade" | "done">("show")
 
   useEffect(() => {
-    const fadeTimer = setTimeout(() => setPhase("fade"), 2000)
-    const hideTimer = setTimeout(() => setPhase("done"), 2500)
+    const fadeTimer = setTimeout(() => setPhase("fade"), 2500)
+    const hideTimer = setTimeout(() => setPhase("done"), 3000)
     return () => { clearTimeout(fadeTimer); clearTimeout(hideTimer) }
   }, [])
 
@@ -29,7 +30,12 @@ export function AppLoader() {
         pointerEvents: phase === "fade" ? "none" : "auto",
       }}
     >
-      <img src="/Gestock.png" alt="GESTOCK" className="w-40 h-40 object-contain" />
+      <DotLottieReact
+        src="https://lottie.host/f6025aed-8451-4330-a5d6-30667ed6c793/DBsncsWns3.json"
+        loop
+        autoplay
+        style={{ width: 200, height: 200 }}
+      />
       <p style={{ marginTop: 12, fontFamily: "system-ui, sans-serif", fontSize: 13, color: "rgba(234,179,8,.7)", textTransform: "uppercase", letterSpacing: 3 }}>
         Chargement
       </p>

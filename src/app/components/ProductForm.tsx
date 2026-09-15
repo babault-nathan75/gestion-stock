@@ -237,7 +237,7 @@ export function ProductForm({ open, onOpenChange, product, onSave, createdBy, ro
                 min="0"
                 value={quantity}
                 onChange={(e) => setQuantity(e.target.value)}
-                disabled={!canEditQuantity}
+                disabled={isEditing && !canEditQuantity}
               />
               {isEditing && !canEditQuantity && (
                 <p className="text-xs text-muted-foreground">Seul le super-admin peut modifier la quantité</p>

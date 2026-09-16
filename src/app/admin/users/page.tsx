@@ -127,7 +127,12 @@ export default function AdminUsersPage() {
         role: adminRole,
         warehouse: adminWarehouse === "__all__" ? null : adminWarehouse,
       }
-      if (password) body.password = password
+      if (password) {
+        const formatted = password.length === 6
+          ? `${password.slice(0, 2)}-${password.slice(2, 4)}-${password.slice(4, 6)}`
+          : password
+        body.password = formatted
+      }
 
       const res = await fetch(editing ? `/api/admins/${editing.id}` : "/api/admins", {
         method: editing ? "PATCH" : "POST",

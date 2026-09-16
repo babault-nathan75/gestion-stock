@@ -23,6 +23,9 @@ export const metadata: Metadata = {
     statusBarStyle: "black-translucent",
     title: "GESTOCK",
   },
+  formatDetection: {
+    telephone: false,
+  },
   icons: {
     icon: [
       { url: "/favicon.ico", sizes: "48x48" },
@@ -39,6 +42,7 @@ export const viewport: Viewport = {
   maximumScale: 1,
   userScalable: false,
   themeColor: "#09090B",
+  viewportFit: "cover",
 };
 
 export default function RootLayout({

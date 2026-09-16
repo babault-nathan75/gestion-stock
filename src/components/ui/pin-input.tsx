@@ -10,14 +10,14 @@ interface PinInputProps {
   disabled?: boolean
 }
 
-export function PinInput({ value, onChange, length = 8, disabled }: PinInputProps) {
+export function PinInput({ value, onChange, length = 6, disabled }: PinInputProps) {
   const inputs = useRef<(HTMLInputElement | null)[]>([])
   const [focused, setFocused] = useState(false)
 
   const chunks = [
     { start: 0, count: 2 },
     { start: 2, count: 2 },
-    { start: 4, count: 4 },
+    { start: 4, count: 2 },
   ]
 
   const handleChange = useCallback((index: number, val: string) => {

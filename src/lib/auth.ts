@@ -8,6 +8,7 @@ export type Role = "SUPER_ADMIN" | "ADMIN"
 export interface SessionUser {
   pseudo: string
   role: Role
+  warehouse: string | null
 }
 
 function getSecret(): Uint8Array {
@@ -35,7 +36,7 @@ export async function verifyUser(pseudo: string, password: string): Promise<Sess
   try {
     const { data, error } = await getSupabase()
       .from("admins")
-      .select("pseudo, password_hash, role")
+      .select("pseudo, password_hash, role, warehouse")
       .eq("pseudo", pseudo)
       .maybeSingle()
 
@@ -43,7 +44,7 @@ export async function verifyUser(pseudo: string, password: string): Promise<Sess
       const hash = await hashPassword(password)
       if (data.password_hash === hash) {
         const role: Role = data.role === "SUPER_ADMIN" ? "SUPER_ADMIN" : "ADMIN"
-        return { pseudo: data.pseudo, role }
+        return { pseudo: data.pseudo, role, warehouse: data.warehouse || null }
       }
       return null
     }
@@ -51,8 +52,8 @@ export async function verifyUser(pseudo: string, password: string): Promise<Sess
   return null
 }
 
-export async function createSessionToken(pseudo: string, role: Role): Promise<string> {
-  const payload = JSON.stringify({ u: pseudo, r: role, e: Date.now() + 24 * 60 * 60 * 1000 })
+export async function createSessionToken(pseudo: string, role: Role, warehouse?: string | null): Promise<string> {
+  const payload = JSON.stringify({ u: pseudo, r: role, w: warehouse || null, e: Date.now() + 24 * 60 * 60 * 1000 })
   const data = btoa(payload)
 
   const key = await crypto.subtle.importKey("raw", getSecret().buffer as ArrayBuffer, ALGO, false, ["sign"])
@@ -76,7 +77,7 @@ export async function verifySessionToken(token: string): Promise<SessionUser | n
     if (payload.e < Date.now()) return null
 
     const role: Role = payload.r === "SUPER_ADMIN" ? "SUPER_ADMIN" : "ADMIN"
-    return { pseudo: payload.u, role }
+    return { pseudo: payload.u, role, warehouse: payload.w || null }
   } catch {
     return null
   }

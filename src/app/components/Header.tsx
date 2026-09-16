@@ -9,7 +9,7 @@ import { LogOut, User } from "lucide-react"
 
 export function Header() {
   const router = useRouter()
-  const { warehouse, setWarehouse, warehouses } = useWarehouse()
+  const { warehouse, setWarehouse, warehouses, warehouseLocked } = useWarehouse()
   const { pseudo } = useAuthUser()
 
   const options = [
@@ -44,24 +44,26 @@ export function Header() {
           </Button>
         </div>
       </div>
-      <div className="flex gap-1.5 px-4 pb-2">
-        {options.map((w) => (
-          <Button
-            key={w.value}
-            variant="ghost"
-            size="sm"
-            className={cn(
-              "h-7 rounded-full text-xs px-3 font-medium transition-all",
-              warehouse === w.value
-                ? "bg-yellow-400 text-black font-semibold shadow-sm hover:bg-yellow-300"
-                : "text-neutral-400 hover:text-white hover:bg-neutral-800"
-            )}
-            onClick={() => setWarehouse(w.value)}
-          >
-            {w.label}
-          </Button>
-        ))}
-      </div>
+      {!warehouseLocked && (
+        <div className="flex gap-1.5 px-4 pb-2">
+          {options.map((w) => (
+            <Button
+              key={w.value}
+              variant="ghost"
+              size="sm"
+              className={cn(
+                "h-7 rounded-full text-xs px-3 font-medium transition-all",
+                warehouse === w.value
+                  ? "bg-yellow-400 text-black font-semibold shadow-sm hover:bg-yellow-300"
+                  : "text-neutral-400 hover:text-white hover:bg-neutral-800"
+              )}
+              onClick={() => setWarehouse(w.value)}
+            >
+              {w.label}
+            </Button>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

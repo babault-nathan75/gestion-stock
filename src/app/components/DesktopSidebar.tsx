@@ -19,7 +19,7 @@ const navItems = [
 export function DesktopSidebar() {
   const router = useRouter()
   const pathname = usePathname()
-  const { warehouse, setWarehouse, warehouses } = useWarehouse()
+  const { warehouse, setWarehouse, warehouses, warehouseLocked } = useWarehouse()
   const { pseudo, role } = useAuthUser()
 
   const options = [
@@ -78,32 +78,34 @@ return (
         </div>
       )}
 
-      <div className="border-t border-neutral-800 px-3 py-4">
-        <div className="flex items-center gap-2 px-3 mb-2">
-          <Warehouse className="h-4 w-4 text-neutral-500" />
-          <span className="text-xs font-semibold uppercase tracking-wider text-neutral-500">Entrepôts</span>
+      {!warehouseLocked && (
+        <div className="border-t border-neutral-800 px-3 py-4">
+          <div className="flex items-center gap-2 px-3 mb-2">
+            <Warehouse className="h-4 w-4 text-neutral-500" />
+            <span className="text-xs font-semibold uppercase tracking-wider text-neutral-500">Entrepôts</span>
+          </div>
+          <div className="space-y-0.5">
+            {options.map((w) => (
+              <button
+                key={w.value}
+                onClick={() => setWarehouse(w.value)}
+                className={cn(
+                  "flex items-center gap-3 w-full px-3 py-2 rounded-lg text-sm font-medium transition-colors text-left",
+                  warehouse === w.value
+                    ? "bg-yellow-500/10 text-yellow-400 border border-yellow-500/20"
+                    : "text-neutral-400 hover:text-white hover:bg-neutral-800"
+                )}
+              >
+                <div className={cn(
+                  "h-2.5 w-2.5 rounded-full shrink-0",
+                  warehouse === w.value ? "bg-yellow-400" : "bg-neutral-600"
+                )} />
+                <span>{w.label}</span>
+              </button>
+            ))}
+          </div>
         </div>
-        <div className="space-y-0.5">
-          {options.map((w) => (
-            <button
-              key={w.value}
-              onClick={() => setWarehouse(w.value)}
-              className={cn(
-                "flex items-center gap-3 w-full px-3 py-2 rounded-lg text-sm font-medium transition-colors text-left",
-                warehouse === w.value
-                  ? "bg-yellow-500/10 text-yellow-400 border border-yellow-500/20"
-                  : "text-neutral-400 hover:text-white hover:bg-neutral-800"
-              )}
-            >
-              <div className={cn(
-                "h-2.5 w-2.5 rounded-full shrink-0",
-                warehouse === w.value ? "bg-yellow-400" : "bg-neutral-600"
-              )} />
-              <span>{w.label}</span>
-            </button>
-          ))}
-        </div>
-      </div>
+      )}
 
       <div className="border-t border-neutral-800 p-3">
         {pseudo && (

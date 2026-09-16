@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { useAuthUser, type Role } from "@/lib/auth-context"
+import { useWarehouse } from "@/lib/warehouse-context"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -32,12 +33,14 @@ interface Admin {
   id: string
   pseudo: string
   role: Role
+  warehouse: string | null
   created_by: string | null
   created_at: string
 }
 
 export default function AdminUsersPage() {
   const { role, pseudo: currentPseudo } = useAuthUser()
+  const { warehouses } = useWarehouse()
   const [admins, setAdmins] = useState<Admin[]>([])
   const [loading, setLoading] = useState(true)
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -45,6 +48,7 @@ export default function AdminUsersPage() {
   const [pseudo, setPseudo] = useState("")
   const [password, setPassword] = useState("")
   const [adminRole, setAdminRole] = useState<Role>("ADMIN")
+  const [adminWarehouse, setAdminWarehouse] = useState<string>("__all__")
   const [saving, setSaving] = useState(false)
 
   const loadAdmins = useCallback(async () => {
@@ -88,6 +92,7 @@ export default function AdminUsersPage() {
     setPseudo("")
     setPassword("")
     setAdminRole("ADMIN")
+    setAdminWarehouse("__all__")
     setDialogOpen(true)
   }
 
@@ -96,6 +101,7 @@ export default function AdminUsersPage() {
     setPseudo(admin.pseudo)
     setPassword("")
     setAdminRole(admin.role)
+    setAdminWarehouse(admin.warehouse || "__all__")
     setDialogOpen(true)
   }
 
@@ -105,12 +111,12 @@ export default function AdminUsersPage() {
       toast.error("Le pseudo est requis")
       return
     }
-    if (!editing && password.length < 8) {
-      toast.error("Le mot de passe doit contenir au moins 8 caractères")
+    if (!editing && password.length < 6) {
+      toast.error("Le mot de passe doit contenir au moins 6 caractères")
       return
     }
-    if (editing && password.length > 0 && password.length < 8) {
-      toast.error("Le mot de passe doit contenir au moins 8 caractères")
+    if (editing && password.length > 0 && password.length < 6) {
+      toast.error("Le mot de passe doit contenir au moins 6 caractères")
       return
     }
 
@@ -119,6 +125,7 @@ export default function AdminUsersPage() {
       const body: Record<string, unknown> = {
         pseudo: pseudo.trim(),
         role: adminRole,
+        warehouse: adminWarehouse === "__all__" ? null : adminWarehouse,
       }
       if (password) body.password = password
 
@@ -207,6 +214,7 @@ export default function AdminUsersPage() {
                   <p className="text-xs text-muted-foreground mt-1">
                     Créé le {format(new Date(admin.created_at), "dd MMMM yyyy", { locale: fr })}
                     {admin.created_by ? ` · par ${admin.created_by}` : ""}
+                    {admin.warehouse ? ` · Entrepôt: ${admin.warehouse}` : " · Tous les entrepôts"}
                   </p>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
@@ -261,8 +269,8 @@ export default function AdminUsersPage() {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder={editing ? "••••••••" : "8 caractères min."}
-                minLength={8}
+                placeholder={editing ? "••••••" : "6 caractères min."}
+                minLength={6}
                 className="h-10"
                 autoComplete="new-password"
               />
@@ -278,6 +286,24 @@ export default function AdminUsersPage() {
                 </SelectContent>
               </Select>
             </div>
+
+            {adminRole === "ADMIN" && (
+              <div className="space-y-1.5">
+                <Label>Entrepôt assigné</Label>
+                <Select value={adminWarehouse} onValueChange={(v) => setAdminWarehouse(v ?? "__all__")}>
+                  <SelectTrigger className="h-10"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__all__">Tous les entrepôts</SelectItem>
+                    {warehouses.map((name) => (
+                      <SelectItem key={name} value={name}>{name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  L&apos;admin ne verra que les données de cet entrepôt
+                </p>
+              </div>
+            )}
 
             <DialogFooter className="flex-col-reverse sm:flex-row gap-2">
               <Button type="button" variant="outline" onClick={() => setDialogOpen(false)} className="w-full sm:w-auto">

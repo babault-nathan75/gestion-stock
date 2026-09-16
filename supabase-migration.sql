@@ -173,6 +173,7 @@ CREATE TABLE IF NOT EXISTS admins (
   pseudo TEXT NOT NULL UNIQUE,
   password_hash TEXT NOT NULL,
   role TEXT NOT NULL DEFAULT 'ADMIN' CHECK (role IN ('SUPER_ADMIN', 'ADMIN')),
+  warehouse TEXT,
   created_by TEXT,
   created_at TIMESTAMPTZ DEFAULT now()
 );

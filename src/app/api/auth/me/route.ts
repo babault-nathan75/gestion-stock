@@ -7,5 +7,5 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ authenticated: false }, { status: 401 })
   }
 
-  return NextResponse.json({ authenticated: true, pseudo: user.pseudo, role: user.role })
+  return NextResponse.json({ authenticated: true, pseudo: user.pseudo, role: user.role, warehouse: user.warehouse })
 }

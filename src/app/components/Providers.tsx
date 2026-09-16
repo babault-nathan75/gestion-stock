@@ -8,10 +8,9 @@ import { DesktopSidebar } from "./DesktopSidebar"
 import { Toaster } from "sonner"
 import { useEffect, useState } from "react"
 import { usePathname, useRouter } from "next/navigation"
-import { DotLottieReact } from "@lottiefiles/dotlottie-react"
 
 function AppLayout({ children }: { children: React.ReactNode }) {
-  const { setPseudo, setRole } = useAuthUser()
+  const { setPseudo, setRole, setWarehouse: setAuthWarehouse, warehouse: authWarehouse } = useAuthUser()
   const pathname = usePathname()
   const router = useRouter()
   const isLoginPage = pathname === "/login"
@@ -27,6 +26,7 @@ function AppLayout({ children }: { children: React.ReactNode }) {
         if (!res.ok) {
           setPseudo(null)
           setRole(null)
+          setAuthWarehouse(null)
           router.replace("/login")
           return null
         }
@@ -36,15 +36,17 @@ function AppLayout({ children }: { children: React.ReactNode }) {
         if (data?.pseudo) {
           setPseudo(data.pseudo)
           if (data.role === "SUPER_ADMIN" || data.role === "ADMIN") setRole(data.role)
+          if (data.warehouse !== undefined) setAuthWarehouse(data.warehouse)
         }
         setAuthChecked(true)
       })
       .catch(() => {
         setPseudo(null)
         setRole(null)
+        setAuthWarehouse(null)
         router.replace("/login")
       })
-  }, [isLoginPage, router, pathname, setPseudo, setRole])
+  }, [isLoginPage, router, pathname, setPseudo, setRole, setAuthWarehouse])
 
   if (isLoginPage) {
     return (
@@ -57,19 +59,18 @@ function AppLayout({ children }: { children: React.ReactNode }) {
 
   if (!authChecked) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-background gap-4">
-        <DotLottieReact
-          src="https://lottie.host/f6025aed-8451-4330-a5d6-30667ed6c793/DBsncsWns3.json"
-          loop
-          autoplay
-          style={{ width: 160, height: 160 }}
-        />
+      <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "#09090B" }}>
+        <div style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div style={{ position: "absolute", width: 100, height: 100, borderRadius: "50%", border: "2px solid rgba(234,179,8,0.15)", borderTopColor: "#EAB308", animation: "spin 1s linear infinite" }} />
+          <img src="/Gestock_favicon_2-removebg-preview.png" alt="GESTOCK" style={{ width: 56, height: 56, objectFit: "contain" }} />
+        </div>
+        <style dangerouslySetInnerHTML={{ __html: `@keyframes spin { to { transform: rotate(360deg); } }` }} />
       </div>
     )
   }
 
   return (
-    <WarehouseProvider>
+    <WarehouseProvider forcedWarehouse={authWarehouse}>
       <div className="flex min-h-screen">
         <DesktopSidebar />
         <div className="flex-1 flex flex-col min-w-0">

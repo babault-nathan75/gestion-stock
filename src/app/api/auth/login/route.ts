@@ -9,13 +9,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Mot de passe requis" }, { status: 400 })
     }
 
-    let user: { pseudo: string; role: Role } | null = null
+    let user: { pseudo: string; role: Role; warehouse?: string | null } | null = null
 
     const trimmedPseudo = String(pseudo || "").trim()
     if (!trimmedPseudo) {
       // Connexion super-admin : mot de passe uniquement (pas de pseudo)
       if (isSuperAdminPassword(password)) {
-        user = { pseudo: getSuperAdminPseudo(), role: "SUPER_ADMIN" }
+        user = { pseudo: getSuperAdminPseudo(), role: "SUPER_ADMIN", warehouse: null }
       }
     } else {
       user = await verifyUser(trimmedPseudo, password)
@@ -25,8 +25,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Pseudo ou mot de passe incorrect" }, { status: 401 })
     }
 
-    const token = await createSessionToken(user.pseudo, user.role)
-    const res = NextResponse.json({ ok: true, pseudo: user.pseudo, role: user.role })
+    const token = await createSessionToken(user.pseudo, user.role, user.warehouse)
+    const res = NextResponse.json({ ok: true, pseudo: user.pseudo, role: user.role, warehouse: user.warehouse || null })
     res.cookies.set("session", token, {
       httpOnly: true,
       secure: false,

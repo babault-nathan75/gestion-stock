@@ -9,7 +9,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   }
 
   const { id } = await params
-  const { pseudo, password, role } = await req.json()
+  const { pseudo, password, role, warehouse } = await req.json()
   const db = getSupabase()
 
   const update: Record<string, unknown> = {}
@@ -20,14 +20,17 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     update.pseudo = String(pseudo).trim()
   }
   if (password !== undefined && String(password).length > 0) {
-    if (String(password).length < 8) {
-      return NextResponse.json({ error: "Le mot de passe doit contenir au moins 8 caractères" }, { status: 400 })
+    if (String(password).length < 6) {
+      return NextResponse.json({ error: "Le mot de passe doit contenir au moins 6 caractères" }, { status: 400 })
     }
     update.password_hash = await hashPassword(String(password))
   }
   if (role !== undefined) {
     const finalRole: Role = role === "SUPER_ADMIN" ? "SUPER_ADMIN" : "ADMIN"
     update.role = finalRole
+  }
+  if (warehouse !== undefined) {
+    update.warehouse = warehouse || null
   }
 
   if (Object.keys(update).length === 0) {

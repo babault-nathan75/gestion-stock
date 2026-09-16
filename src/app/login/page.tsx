@@ -8,11 +8,10 @@ import { Label } from "@/components/ui/label"
 import { PinInput } from "@/components/ui/pin-input"
 import { useAuthUser } from "@/lib/auth-context"
 import { toast } from "sonner"
-import { DotLottieReact } from "@lottiefiles/dotlottie-react"
 
 export default function LoginPage() {
   const router = useRouter()
-  const { setPseudo, setRole } = useAuthUser()
+  const { setPseudo, setRole, setWarehouse } = useAuthUser()
   const [mode, setMode] = useState<"admin" | "super">("admin")
   const [pseudo, setPseudoInput] = useState("")
   const [password, setPassword] = useState("")
@@ -28,7 +27,7 @@ export default function LoginPage() {
         return
       }
     } else {
-      if (!pseudo.trim() || password.length < 8) {
+      if (!pseudo.trim() || password.length < 6) {
         toast.error("Veuillez remplir tous les champs")
         return
       }
@@ -42,8 +41,8 @@ export default function LoginPage() {
           : JSON.stringify({
               pseudo: pseudo.trim(),
               password:
-                password.length === 8
-                  ? `${password.slice(0, 2)}-${password.slice(2, 4)}-${password.slice(4, 8)}`
+                password.length === 6
+                  ? `${password.slice(0, 2)}-${password.slice(2, 4)}-${password.slice(4, 6)}`
                   : password,
             })
 
@@ -62,6 +61,7 @@ export default function LoginPage() {
 
       if (data.pseudo) setPseudo(data.pseudo)
       if (data.role === "SUPER_ADMIN" || data.role === "ADMIN") setRole(data.role)
+      if (data.warehouse !== undefined) setWarehouse(data.warehouse)
 
       router.push("/")
       router.refresh()
@@ -74,14 +74,13 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       {loading && (
-        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm">
-          <DotLottieReact
-            src="https://lottie.host/f6025aed-8451-4330-a5d6-30667ed6c793/DBsncsWns3.json"
-            loop
-            autoplay
-            style={{ width: 160, height: 160 }}
-          />
-          <p className="mt-3 text-sm text-yellow-500 uppercase tracking-widest">Connexion...</p>
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center" style={{ background: "rgba(9,9,11,0.9)" }}>
+          <div style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <div style={{ position: "absolute", width: 100, height: 100, borderRadius: "50%", border: "2px solid rgba(234,179,8,0.15)", borderTopColor: "#EAB308", animation: "spin 1s linear infinite" }} />
+            <img src="/Gestock_favicon_2-removebg-preview.png" alt="GESTOCK" style={{ width: 56, height: 56, objectFit: "contain" }} />
+          </div>
+          <p className="mt-4 text-xs text-yellow-500 uppercase" style={{ letterSpacing: 3 }}>Connexion...</p>
+          <style dangerouslySetInnerHTML={{ __html: `@keyframes spin { to { transform: rotate(360deg); } }` }} />
         </div>
       )}
       <div className="w-full max-w-sm space-y-8 animate-fade-in">
@@ -132,7 +131,7 @@ export default function LoginPage() {
                 <PinInput value={password} onChange={setPassword} />
               </div>
             </div>
-            <Button type="submit" disabled={loading || password.length < 8} className="w-full h-11">
+            <Button type="submit" disabled={loading || password.length < 6} className="w-full h-11">
               {loading ? "Connexion..." : "Se connecter"}
             </Button>
           </form>

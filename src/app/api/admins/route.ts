@@ -16,7 +16,7 @@ export async function GET(req: NextRequest) {
 
   const { data, error } = await getSupabase()
     .from("admins")
-    .select("id, pseudo, role, created_by, created_at")
+    .select("id, pseudo, role, warehouse, created_by, created_at")
     .order("created_at", { ascending: false })
 
   if (error) {
@@ -31,13 +31,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Accès refusé" }, { status: 403 })
   }
 
-  const { pseudo, password, role } = await req.json()
+  const { pseudo, password, role, warehouse } = await req.json()
 
   if (!pseudo || !String(pseudo).trim()) {
     return NextResponse.json({ error: "Le pseudo est requis" }, { status: 400 })
   }
-  if (!password || String(password).length < 8) {
-    return NextResponse.json({ error: "Le mot de passe doit contenir au moins 8 caractères" }, { status: 400 })
+  if (!password || String(password).length < 6) {
+    return NextResponse.json({ error: "Le mot de passe doit contenir au moins 6 caractères" }, { status: 400 })
   }
 
   const finalRole: Role = role === "SUPER_ADMIN" ? "SUPER_ADMIN" : "ADMIN"
@@ -47,6 +47,7 @@ export async function POST(req: NextRequest) {
     pseudo: String(pseudo).trim(),
     password_hash: hash,
     role: finalRole,
+    warehouse: warehouse || null,
     created_by: user.pseudo,
   })
 

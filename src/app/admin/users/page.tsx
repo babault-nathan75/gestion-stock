@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
+import { PinInput } from "@/components/ui/pin-input"
 import { StockLoader } from "@/app/components/StockLoader"
 import {
   Dialog,
@@ -266,19 +267,15 @@ export default function AdminUsersPage() {
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="admin-password">
+              <Label>
                 Mot de passe {editing ? "(vide = inchangé)" : "*"}
               </Label>
-              <Input
-                id="admin-password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder={editing ? "••••••" : "6 caractères min."}
-                minLength={6}
-                className="h-10"
-                autoComplete="new-password"
-              />
+              <div className="flex justify-center">
+                <PinInput value={password} onChange={setPassword} />
+              </div>
+              {!editing && (
+                <p className="text-xs text-muted-foreground text-center">6 chiffres</p>
+              )}
             </div>
 
             <div className="space-y-1.5">

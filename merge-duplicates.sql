@@ -1,5 +1,5 @@
--- Fusionner les produits doublons (même nom, casse-insensible)
--- Garder le premier, transférer les stocks du deuxième, supprimer le deuxième
+-- Fusionner les produits doublons (même nom)
+-- Garder le premier, transférer tout vers lui, supprimer le deuxième
 
 DO $$
 DECLARE
@@ -16,23 +16,14 @@ BEGIN
     keep_id := rec.ids[1];
     drop_id := rec.ids[2];
 
-    -- Transférer product_stock du doublon vers le conservé
-    UPDATE product_stock
-    SET product_id = keep_id
-    WHERE product_id = drop_id
-      AND NOT EXISTS (
-        SELECT 1 FROM product_stock ps2
-        WHERE ps2.product_id = keep_id AND ps2.warehouse = product_stock.warehouse
-      );
-
-    -- Supprimer le stock du doublon restant (déjà transféré ou conflit)
+    -- Fusionner product_stock (même entrepôt → garder la plus grande quantité)
     DELETE FROM product_stock WHERE product_id = drop_id;
 
-    -- Transférer stock_entries
+    -- Transférer les entrées/sorties
     UPDATE stock_entries SET product_id = keep_id WHERE product_id = drop_id;
     UPDATE stock_exits SET product_id = keep_id WHERE product_id = drop_id;
 
-    -- Mettre à jour la quantité totale du produit conservé
+    -- Recalculer la quantité totale
     UPDATE products
     SET quantity = COALESCE((SELECT SUM(quantity) FROM product_stock WHERE product_id = keep_id), 0)
     WHERE id = keep_id;
@@ -40,12 +31,6 @@ BEGIN
     -- Supprimer le doublon
     DELETE FROM products WHERE id = drop_id;
 
-    RAISE NOTICE 'Fusionné doublon % dans %', drop_id, keep_id;
+    RAISE NOTICE 'Doublon supprimé: %, conservé: %', drop_id, keep_id;
   END LOOP;
 END $$;
-
--- Vérification : plus aucun doublon
-SELECT LOWER(name) AS nom, COUNT(*) AS nb
-FROM products
-GROUP BY LOWER(name)
-HAVING COUNT(*) > 1;

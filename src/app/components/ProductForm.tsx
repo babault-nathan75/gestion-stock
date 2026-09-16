@@ -108,6 +108,19 @@ export function ProductForm({ open, onOpenChange, product, onSave, createdBy, ro
     const qty = parseInt(quantity) || 0
     const db = getSupabase()
 
+    if (!isEditing) {
+      const { data: existing } = await db
+        .from("products")
+        .select("id")
+        .ilike("name", name.trim())
+        .limit(1)
+      if (existing && existing.length > 0) {
+        toast.warning("Ce produit existe déjà. Pour incrémenter le stock, faites-le dans « Entrées ».", { duration: 6000 })
+        setLoading(false)
+        return
+      }
+    }
+
     if (isEditing) {
       const updates: Record<string, any> = {
         name: name.trim(),

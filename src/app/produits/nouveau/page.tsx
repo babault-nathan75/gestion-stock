@@ -46,6 +46,17 @@ export default function NouveauProduitPage() {
     const db = getSupabase()
     const qty = parseInt(quantity) || 0
 
+    const { data: existing } = await db
+      .from("products")
+      .select("id")
+      .ilike("name", name.trim())
+      .limit(1)
+    if (existing && existing.length > 0) {
+      toast.warning("Ce produit existe déjà. Pour incrémenter le stock, faites-le dans « Entrées ».", { duration: 6000 })
+      setLoading(false)
+      return
+    }
+
     const { data: newProduct, error: createError } = await db
       .from("products")
       .insert({

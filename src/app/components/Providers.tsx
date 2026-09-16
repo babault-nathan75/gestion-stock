@@ -74,7 +74,7 @@ function AppLayout({ children }: { children: React.ReactNode }) {
       <div className="flex min-h-screen">
         <DesktopSidebar />
         <div className="flex-1 flex flex-col min-w-0">
-          <div className="md:hidden">
+          <div className="md:hidden h-[88px] shrink-0">
             <Header />
           </div>
           <main className="flex-1">

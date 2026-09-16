@@ -24,7 +24,7 @@ export function Header() {
   }
 
   return (
-    <div className="sticky top-0 z-30 bg-black/80 backdrop-blur-md border-b border-neutral-800">
+    <div className="fixed top-0 left-0 right-0 z-30 bg-black/80 backdrop-blur-md border-b border-neutral-800 md:hidden">
       <div className="flex items-center justify-between px-4 py-2">
         <div className="flex items-center gap-2">
           <img src="/Gestock_favicon_2-removebg-preview.png" alt="GESTOCK" className="h-9 w-9 shrink-0 object-contain" />

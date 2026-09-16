@@ -14,16 +14,6 @@ function getSecret(): Uint8Array {
   return new TextEncoder().encode(process.env.AUTH_SECRET || "")
 }
 
-function getEnvUsers(): Record<string, string> {
-  const raw = process.env.AUTH_USERS || ""
-  const users: Record<string, string> = {}
-  for (const part of raw.split(",")) {
-    const [pseudo, password] = part.split(":")
-    if (pseudo && password) users[pseudo.trim()] = password.trim()
-  }
-  return users
-}
-
 export async function hashPassword(password: string): Promise<string> {
   const data = new TextEncoder().encode(password)
   const digest = await crypto.subtle.digest("SHA-256", data)
@@ -57,14 +47,7 @@ export async function verifyUser(pseudo: string, password: string): Promise<Sess
       }
       return null
     }
-  } catch {
-    // Supabase non configuré : on retombe sur les comptes env
-  }
-
-  const envUsers = getEnvUsers()
-  if (envUsers[pseudo] === password) {
-    return { pseudo, role: "ADMIN" }
-  }
+  } catch {}
   return null
 }
 
